@@ -7,7 +7,9 @@ import Data.List (List, singleton)
 import Data.Maybe (Maybe(..))
 import Halogen (ClassName(..))
 import Halogen as H
+import Halogen.HTML (HTML(..))
 import Halogen.HTML as HH
+import Halogen.HTML as HTML
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties (id_)
 import Halogen.HTML.Properties as Prop
@@ -49,9 +51,15 @@ initialTodos =
     ])
   }
 
+initialPanels :: Array String
+initialPanels =
+  [ "Activity Inventory List", "Todo Today", "Currently doing"]
+
+
 type State =
     {
         activityInventoryList :: ActivityInventoryList,
+        panels :: Array String,
         todoNow :: Maybe TodoNow,
         selectedTodo :: Maybe Todo
     }
@@ -61,7 +69,7 @@ data Action = Noop
 component :: forall q i o m. H.Component HH.HTML q i o m
 component =
   H.mkComponent
-    { initialState: \_ -> { activityInventoryList: initialTodos, todoNow: Nothing, selectedTodo: Nothing   }
+    { initialState: \_ -> { activityInventoryList: initialTodos, todoNow: Nothing, selectedTodo: Nothing, panels: initialPanels   }
     , render
     , eval: H.mkEval $ H.defaultEval { handleAction = handleAction }
     }
@@ -94,16 +102,14 @@ panelsView state =
         HH.div [ Prop.id_"Todo"] 
           [
             HH.div [ Prop.class_ (ClassName "container")] 
-              [ HH.div [ Prop.class_ (ClassName "panel"), Prop.id_ "activityInventoryList" ] 
-                  [ HH.h1_ [ HH.text "Activity Inventory List"]]
-                , HH.div [ Prop.class_ (ClassName "panel"), Prop.id_ "todoToday" ] 
-                    [ HH.h1_ [ HH.text "Todo Today"]]
-                , HH.div [ Prop.class_ (ClassName "panel"), Prop.id_ "selectedTodo" ] 
-                    [ HH.h1_ [ HH.text "Currently doing" ]]
-              ]
+                  (map panelsListView state.panels)
           ]
       ]
     ]  
+
+panelsListView :: forall cs m. String -> HTML.HTML cs m
+panelsListView panelName =
+  HH.div [ Prop.class_ (ClassName "panel"), Prop.id_ "activityInventoryList" ] [ HH.h1_ [ HH.text panelName ]]
 
 listView :: forall cs m. State -> HH.HTML cs m
 listView state =
