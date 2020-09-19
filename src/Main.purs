@@ -2,7 +2,6 @@ module Main where
 
 import Prelude
 
-import App.Button as Button
 import App.ActivityList as Activity
 import Effect (Effect)
 import Halogen.Aff as HA
