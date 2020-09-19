@@ -6,7 +6,7 @@ import Control.Monad.State (state)
 import Data.Array (fromFoldable)
 import Data.List (List, singleton)
 import Data.Maybe (Maybe(..))
-import Halogen (ClassName(..))
+import Halogen (AttrName(..), ClassName(..))
 import Halogen as H
 import Halogen.HTML (HTML(..))
 import Halogen.HTML as HH
@@ -48,7 +48,11 @@ initialTodos = [ { panel : "backlog",
                  }
                , { panel : "backlog",
                    name : "next",
-                   priority : High
+                   priority : Medium
+                 }
+               , { panel : "backlog",
+                   name : "trivial task",
+                   priority : Medium
                  }
                ]
 
@@ -123,7 +127,26 @@ panelsListView panel =
 
 listView :: forall cs m. Array Todo -> HH.HTML cs m
 listView todos =
-  HH.ul_ (map (\todo -> HH.li [] [HH.text  todo.name]) todos)
+  HH.div [ Prop.class_ (ClassName "itemContainer")] (map todoView  todos)
+
+todoView :: forall cs m. Todo -> HH.HTML cs m 
+todoView todo =
+  HH.li 
+    [ Prop.class_ $ ClassName "item"
+    , Prop.attr (AttrName "style")  $ "background-color: " <> priorityToColor todo.priority
+    ] [ HH.text  todo.name
+      ]
+
+-- Helper 
+priorityToColor :: Priority -> String
+priorityToColor priority =
+    case priority of
+      High ->
+        "#f9aeae"
+      Medium ->
+        "#f5f588"
+      Low ->
+        "#469dd0"
 
 render :: forall cs m. State -> H.ComponentHTML Action cs m
 render state =
