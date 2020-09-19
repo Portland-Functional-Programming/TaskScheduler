@@ -3,6 +3,7 @@ module App.ActivityList where
 import Prelude
 
 import Control.Monad.State (state)
+import Data.Array (fromFoldable)
 import Data.List (List, singleton)
 import Data.Maybe (Maybe(..))
 import Halogen (ClassName(..))
@@ -29,37 +30,43 @@ type Todo =
   }
 
 type TodoNow = {
-    todos :: Maybe (List Todo) 
+    todos :: Maybe (Array Todo) 
 }
 type ActivityInventoryList = {
     todos :: Maybe (Array Todo) 
 }
 
-initialTodos :: ActivityInventoryList
-initialTodos =
-  { todos: Just ([
-    {
-      panel : "backlog",
-      name : "Finish planning",
-      priority : High
-    }
-    , {
-      panel : "backlog",
-      name : "next",
-      priority : High
-      }
-    ])
-  }
+type Panel = {
+  name :: String,
+  todos :: Array Todo
+}
 
-initialPanels :: Array String
-initialPanels =
-  [ "Activity Inventory List", "Todo Today", "Currently doing"]
+initialTodos :: Array Todo
+initialTodos = [ { panel : "backlog",
+                   name : "Finish planning",
+                   priority : High
+                 }
+               , { panel : "backlog",
+                   name : "next",
+                   priority : High
+                 }
+               ]
 
+initialPanels :: Array Panel
+initialPanels = [ { name: "Activity Inventory List",
+                    todos: initialTodos
+                  }
+                , { name: "Todo Today",
+                    todos: []
+                  }
+                , { name: "Currently doing",
+                    todos: []
+                  }
+                ]
 
 type State =
     {
-        activityInventoryList :: ActivityInventoryList,
-        panels :: Array String,
+        panels :: Array Panel,
         todoNow :: Maybe TodoNow,
         selectedTodo :: Maybe Todo
     }
@@ -69,7 +76,7 @@ data Action = Noop
 component :: forall q i o m. H.Component HH.HTML q i o m
 component =
   H.mkComponent
-    { initialState: \_ -> { activityInventoryList: initialTodos, todoNow: Nothing, selectedTodo: Nothing, panels: initialPanels   }
+    { initialState: \_ -> { panels: initialPanels, todoNow: Nothing, selectedTodo: Nothing }
     , render
     , eval: H.mkEval $ H.defaultEval { handleAction = handleAction }
     }
@@ -102,24 +109,21 @@ panelsView state =
         HH.div [ Prop.id_"Todo"] 
           [
             HH.div [ Prop.class_ (ClassName "container")] 
-                  (map panelsListView state.panels)
+            (map panelsListView state.panels)
           ]
       ]
     ]  
 
-panelsListView :: forall cs m. String -> HTML.HTML cs m
-panelsListView panelName =
-  HH.div [ Prop.class_ (ClassName "panel"), Prop.id_ "activityInventoryList" ] [ HH.h1_ [ HH.text panelName ]]
+panelsListView :: forall cs m. Panel -> HTML.HTML cs m
+panelsListView panel =
+  HH.div [ Prop.class_ (ClassName "panel"), Prop.id_ "activityInventoryList" ]
+         [ HH.h1_ [ HH.text panel.name ]
+         , listView panel.todos
+         ]
 
-listView :: forall cs m. State -> HH.HTML cs m
-listView state =
-  case state.activityInventoryList.todos of
-    Just todos ->
-      HH.ul_ (
-        map (\todo -> HH.li [] [HH.text  todo.name]) todos)
-    Nothing ->
-      HH.ul_ []
-    
+listView :: forall cs m. Array Todo -> HH.HTML cs m
+listView todos =
+  HH.ul_ (map (\todo -> HH.li [] [HH.text  todo.name]) todos)
 
 render :: forall cs m. State -> H.ComponentHTML Action cs m
 render state =
