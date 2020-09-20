@@ -82,8 +82,6 @@ component =
     , eval: H.mkEval $ H.defaultEval { handleAction = handleAction }
     }
 
-
-
 sidebarView :: forall cs m. State -> HH.HTML cs m
 sidebarView state =
   HH.aside [ Prop.classes [ClassName "column", ClassName "sidebar", ClassName "is-narrow"]] 
@@ -99,7 +97,6 @@ sidebarView state =
           ]
       ]
     ]  
-
 
 panelsView :: forall cs m. State -> HH.HTML cs m
 panelsView state =
