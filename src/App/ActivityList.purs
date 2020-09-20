@@ -24,7 +24,6 @@ data Priority =
 
 type Todo =
   {
-    panel :: String,
     name :: String,
     priority :: Priority
   }
@@ -32,6 +31,7 @@ type Todo =
 type TodoNow = {
     todos :: Maybe (Array Todo) 
 }
+
 type ActivityInventoryList = {
     todos :: Maybe (Array Todo) 
 }
@@ -42,16 +42,13 @@ type Panel = {
 }
 
 initialTodos :: Array Todo
-initialTodos = [ { panel : "backlog",
-                   name : "Finish planning",
+initialTodos = [ {name : "Finish planning",
                    priority : High
                  }
-               , { panel : "backlog",
-                   name : "next",
+               , { name : "next",
                    priority : Medium
                  }
-               , { panel : "backlog",
-                   name : "trivial task",
+               , {name : "trivial task",
                    priority : Medium
                  }
                ]
