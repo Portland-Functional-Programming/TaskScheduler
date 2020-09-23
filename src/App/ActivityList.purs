@@ -16,60 +16,56 @@ import Halogen.HTML.Properties (id_)
 import Halogen.HTML.Properties as Prop
 import Prelude as List
 
-data Priority =
-    High
-    | Medium
-    | Low
-
+data Priority = High
+              | Medium
+              | Low
 
 type Todo =
-  {
-    name :: String,
-    priority :: Priority
+  { name :: String
+  , priority :: Priority
   }
 
-type TodoNow = {
-    todos :: Maybe (Array Todo) 
-}
+type TodoNow =
+  { todos :: Maybe (Array Todo)
+  }
 
-type ActivityInventoryList = {
-    todos :: Maybe (Array Todo) 
-}
+type ActivityInventoryList =
+  { todos :: Maybe (Array Todo)
+  }
 
-type Panel = {
-  name :: String,
-  todos :: Array Todo
-}
+type Panel =
+  { name :: String
+  , todos :: Array Todo
+  }
 
 initialTodos :: Array Todo
-initialTodos = [ {name : "Finish planning",
+initialTodos = [ { name : "Finish planning",
                    priority : High
                  }
                , { name : "next",
                    priority : Medium
                  }
-               , {name : "trivial task",
+               , { name : "trivial task",
                    priority : Medium
                  }
                ]
 
 initialPanels :: Array Panel
-initialPanels = [ { name: "Activity Inventory List",
-                    todos: initialTodos
+initialPanels = [ { name: "Activity Inventory List"
+                  , todos: initialTodos
                   }
-                , { name: "Todo Today",
-                    todos: []
+                , { name: "Todo Today"
+                  , todos: []
                   }
-                , { name: "Currently doing",
-                    todos: []
+                , { name: "Currently doing"
+                  , todos: []
                   }
                 ]
 
 type State =
-    {
-        panels :: Array Panel,
-        todoNow :: Maybe TodoNow,
-        selectedTodo :: Maybe Todo
+    { panels :: Array Panel
+    , todoNow :: Maybe TodoNow
+    , selectedTodo :: Maybe Todo
     }
 
 data Action = Noop
@@ -84,33 +80,33 @@ component =
 
 sidebarView :: forall cs m. State -> HH.HTML cs m
 sidebarView state =
-  HH.aside [ Prop.classes [ClassName "column", ClassName "sidebar", ClassName "is-narrow"]] 
+  HH.aside [ Prop.classes [ClassName "column", ClassName "sidebar", ClassName "is-narrow"]]
     [
-      HH.section [ Prop.class_ (ClassName "section")] 
+      HH.section [ Prop.class_ (ClassName "section")]
       [
-        HH.nav [ Prop.class_ (ClassName "menu")] 
+        HH.nav [ Prop.class_ (ClassName "menu")]
           [
-            HH.ul [ Prop.class_ (ClassName "menu-list")] 
+            HH.ul [ Prop.class_ (ClassName "menu-list")]
               [
                 HH.li [] [ HH.text "test"]
               ]
           ]
       ]
-    ]  
+    ]
 
 panelsView :: forall cs m. State -> HH.HTML cs m
 panelsView state =
-  HH.div [ Prop.classes [ClassName "column"]] 
+  HH.div [ Prop.classes [ClassName "column"]]
     [
-      HH.section [ Prop.class_ (ClassName "section")] 
+      HH.section [ Prop.class_ (ClassName "section")]
       [
-        HH.div [ Prop.id_"Todo"] 
+        HH.div [ Prop.id_"Todo"]
           [
-            HH.div [ Prop.class_ (ClassName "container")] 
+            HH.div [ Prop.class_ (ClassName "container")]
             (map panelsListView state.panels)
           ]
       ]
-    ]  
+    ]
 
 panelsListView :: forall cs m. Panel -> HTML.HTML cs m
 panelsListView panel =
@@ -123,28 +119,25 @@ listView :: forall cs m. Array Todo -> HH.HTML cs m
 listView todos =
   HH.div [ Prop.class_ (ClassName "itemContainer")] (map todoView  todos)
 
-todoView :: forall cs m. Todo -> HH.HTML cs m 
+todoView :: forall cs m. Todo -> HH.HTML cs m
 todoView todo =
-  HH.li 
+  HH.li
     [ Prop.class_ $ ClassName "item"
     , Prop.attr (AttrName "style")  $ "background-color: " <> priorityToColor todo.priority
     ] [ HH.text  todo.name
       ]
 
--- Helper 
+-- Helper
 priorityToColor :: Priority -> String
 priorityToColor priority =
-    case priority of
-      High ->
-        "#f9aeae"
-      Medium ->
-        "#f5f588"
-      Low ->
-        "#469dd0"
+  case priority of
+    High -> "#f9aeae"
+    Medium -> "#f5f588"
+    Low -> "#469dd0"
 
 render :: forall cs m. State -> H.ComponentHTML Action cs m
 render state =
-  HH.div [ Prop.class_ (ClassName "columns")] 
+  HH.div [ Prop.class_ (ClassName "columns")]
     [ sidebarView state
     , panelsView state
     ]
@@ -152,4 +145,4 @@ render state =
 handleAction :: forall cs o m. Action → H.HalogenM State Action cs o m Unit
 handleAction = case _ of
   Noop ->
-    H.modify_ \st -> st 
+    H.modify_ \st -> st
