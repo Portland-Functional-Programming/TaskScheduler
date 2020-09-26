@@ -14,7 +14,9 @@ import Halogen.HTML as HTML
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties (id_)
 import Halogen.HTML.Properties as Prop
+import Web.HTML.Event.DragEvent as DE
 import Prelude as List
+import Debug.Trace (trace)
 
 data Priority = High
               | Medium
@@ -68,7 +70,8 @@ type State =
     , selectedTodo :: Maybe Todo
     }
 
-data Action = Noop
+data Action = Move Todo Panel
+            | Dragging Todo
 
 component :: forall q i o m. H.Component HH.HTML q i o m
 component =
@@ -94,7 +97,7 @@ sidebarView state =
       ]
     ]
 
-panelsView :: forall cs m. State -> HH.HTML cs m
+panelsView :: forall cs m. State -> HH.HTML cs Action
 panelsView state =
   HH.div [ Prop.classes [ClassName "column"]]
     [
@@ -108,22 +111,26 @@ panelsView state =
       ]
     ]
 
-panelsListView :: forall cs m. Panel -> HTML.HTML cs m
+panelsListView :: forall cs m. Panel -> HTML.HTML cs Action
 panelsListView panel =
-  HH.div [ Prop.class_ (ClassName "panel"), Prop.id_ "activityInventoryList" ]
+  HH.div [ Prop.class_ (ClassName "panel"), Prop.id_ "activityInventoryList"
+        -- , HE.onDragEnter (\de -> )
+         ]
          [ HH.h1_ [ HH.text panel.name ]
          , listView panel.todos
          ]
 
-listView :: forall cs m. Array Todo -> HH.HTML cs m
+listView :: forall cs m. Array Todo -> HH.HTML cs Action
 listView todos =
   HH.div [ Prop.class_ (ClassName "itemContainer")] (map todoView  todos)
 
-todoView :: forall cs m. Todo -> HH.HTML cs m
+todoView :: forall cs. Todo -> HH.HTML cs Action
 todoView todo =
   HH.li
     [ Prop.class_ $ ClassName "item"
     , Prop.attr (AttrName "style")  $ "background-color: " <> priorityToColor todo.priority
+    , Prop.attr (AttrName "draggable") "true"
+    , HE.onDragStart \_ -> Just $ Dragging todo
     ] [ HH.text  todo.name
       ]
 
@@ -135,7 +142,7 @@ priorityToColor priority =
     Medium -> "#f5f588"
     Low -> "#469dd0"
 
-render :: forall cs m. State -> H.ComponentHTML Action cs m
+render :: forall slots m. State -> H.ComponentHTML Action slots m
 render state =
   HH.div [ Prop.class_ (ClassName "columns")]
     [ sidebarView state
@@ -144,5 +151,5 @@ render state =
 
 handleAction :: forall cs o m. Action → H.HalogenM State Action cs o m Unit
 handleAction = case _ of
-  Noop ->
-    H.modify_ \st -> st
+  Dragging todo -> (trace "Dragging a todo!") \_ -> H.modify_ \st -> st
+  _ -> H.modify_ \st -> st
