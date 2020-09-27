@@ -5,7 +5,7 @@ import Prelude
 import Control.Monad.State (state)
 import Data.Array (fromFoldable)
 import Data.List (List, singleton)
-import Data.Maybe (Maybe(..))
+import Data.Maybe (Maybe(..), fromJust)
 import Halogen (AttrName(..), ClassName(..))
 import Halogen as H
 import Halogen.HTML (HTML(..))
@@ -16,7 +16,10 @@ import Halogen.HTML.Properties (id_)
 import Halogen.HTML.Properties as Prop
 import Web.HTML.Event.DragEvent as DE
 import Prelude as List
+
+import Partial.Unsafe (unsafePartial)
 import Debug.Trace (trace)
+import Unsafe.Coerce (unsafeCoerce)
 
 data Priority = High
               | Medium
@@ -68,15 +71,19 @@ type State =
     { panels :: Array Panel
     , todoNow :: Maybe TodoNow
     , selectedTodo :: Maybe Todo
+    , transitioning :: Maybe Todo
     }
 
-data Action = Move Todo Panel
-            | Dragging Todo
+data Action = Dragging Todo
+            | DroppedOn Panel
 
 component :: forall q i o m. H.Component HH.HTML q i o m
 component =
   H.mkComponent
-    { initialState: \_ -> { panels: initialPanels, todoNow: Nothing, selectedTodo: Nothing }
+    { initialState: \_ -> { panels: initialPanels
+                          , todoNow: Nothing
+                          , selectedTodo: Nothing
+                          , transitioning: Nothing}
     , render
     , eval: H.mkEval $ H.defaultEval { handleAction = handleAction }
     }
@@ -115,6 +122,7 @@ panelsListView :: forall cs m. Panel -> HTML.HTML cs Action
 panelsListView panel =
   HH.div [ Prop.class_ (ClassName "panel"), Prop.id_ "activityInventoryList"
         -- , HE.onDragEnter (\de -> )
+         , HE.onDrop (\_ -> Just $ DroppedOn panel)
          ]
          [ HH.h1_ [ HH.text panel.name ]
          , listView panel.todos
@@ -149,7 +157,28 @@ render state =
     , panelsView state
     ]
 
+getPanel :: Todo -> Panel
+getPanel = unsafeCoerce unit
+
+removeTodo :: Todo -> Array Panel -> Array Panel
+removeTodo = unsafeCoerce unit
+
+addTodo :: Todo -> Panel -> Panel
+addTodo = unsafeCoerce unit
+
+replacePanel :: Panel -> Array Panel -> Array Panel
+replacePanel = unsafeCoerce unit
+
 handleAction :: forall cs o m. Action → H.HalogenM State Action cs o m Unit
 handleAction = case _ of
-  Dragging todo -> (trace "Dragging a todo!") \_ -> H.modify_ \st -> st
-  _ -> H.modify_ \st -> st
+  Dragging todo -> H.modify_ \st -> st { transitioning = Just todo }
+  DroppedOn panel -> H.modify_ \st ->
+    let todo = unsafePartial (fromJust st.transitioning)
+        --sourcePanel = getPanel todo
+        panels' = removeTodo todo st.panels
+        destPanel' = addTodo todo panel
+        panels'' = replacePanel destPanel' panels'
+    in st { transitioning = Nothing
+          , panels = panels''
+          }
+        
