@@ -3,7 +3,7 @@ module App.ActivityList where
 import Prelude
 
 import Control.Monad.State (state)
-import Data.Array (fromFoldable)
+import Data.Array (fromFoldable, delete, snoc, span, tail)
 import Data.List (List, singleton)
 import Data.Maybe (Maybe(..), fromJust)
 import Halogen (AttrName(..), ClassName(..))
@@ -25,6 +25,8 @@ data Priority = High
               | Medium
               | Low
 
+derive instance eqPriority :: Eq Priority
+
 type Todo =
   { name :: String
   , priority :: Priority
@@ -32,7 +34,7 @@ type Todo =
 
 type TodoNow =
   { todos :: Maybe (Array Todo)
-  }
+  } 
 
 type ActivityInventoryList =
   { todos :: Maybe (Array Todo)
@@ -157,27 +159,28 @@ render state =
     , panelsView state
     ]
 
-getPanel :: Todo -> Panel
-getPanel = unsafeCoerce unit
+removeTodoFromPanel :: Todo -> Panel -> Panel
+removeTodoFromPanel todo panel@{ todos: todos } = panel { todos = delete todo todos }
 
 removeTodo :: Todo -> Array Panel -> Array Panel
-removeTodo = unsafeCoerce unit
+removeTodo todo = map (removeTodoFromPanel todo)
 
 addTodo :: Todo -> Panel -> Panel
-addTodo = unsafeCoerce unit
+addTodo todo panel@{ todos: todos } = panel { todos = snoc todos todo }
 
-replacePanel :: Panel -> Array Panel -> Array Panel
-replacePanel = unsafeCoerce unit
+replacePanel :: Panel -> Array Panel -> Maybe (Array Panel)
+replacePanel panel@{ name: name } panels =
+  let { init: init, rest: rest } = span (\{ name: name' } -> name == name') panels
+  in map (\tail -> init <> [panel] <> tail) (tail rest)
 
 handleAction :: forall cs o m. Action → H.HalogenM State Action cs o m Unit
 handleAction = case _ of
   Dragging todo -> H.modify_ \st -> st { transitioning = Just todo }
   DroppedOn panel -> H.modify_ \st ->
     let todo = unsafePartial (fromJust st.transitioning)
-        --sourcePanel = getPanel todo
         panels' = removeTodo todo st.panels
         destPanel' = addTodo todo panel
-        panels'' = replacePanel destPanel' panels'
+        panels'' = unsafePartial $ fromJust $ replacePanel destPanel' panels'
     in st { transitioning = Nothing
           , panels = panels''
           }
