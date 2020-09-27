@@ -15,6 +15,8 @@ import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties (id_)
 import Halogen.HTML.Properties as Prop
 import Web.HTML.Event.DragEvent as DE
+import Web.Event.Event (Event, preventDefault)
+import Effect.Class (class MonadEffect)
 import Prelude as List
 
 import Partial.Unsafe (unsafePartial)
@@ -78,8 +80,10 @@ type State =
 
 data Action = Dragging Todo
             | DroppedOn Panel
+            | PreventDefault Event Action
+            | Noop
 
-component :: forall q i o m. H.Component HH.HTML q i o m
+component :: forall q i o m. MonadEffect m => H.Component HH.HTML q i o m
 component =
   H.mkComponent
     { initialState: \_ -> { panels: initialPanels
@@ -123,8 +127,8 @@ panelsView state =
 panelsListView :: forall cs m. Panel -> HTML.HTML cs Action
 panelsListView panel =
   HH.div [ Prop.class_ (ClassName "panel"), Prop.id_ "activityInventoryList"
-        -- , HE.onDragEnter (\de -> )
-         , HE.onDrop (\_ -> Just $ DroppedOn panel)
+         , HE.onDragEnter (\de -> Just $ PreventDefault (DE.toEvent de) Noop)
+         , HE.onDrop (\de -> Just $ PreventDefault (DE.toEvent de) (DroppedOn panel))
          ]
          [ HH.h1_ [ HH.text panel.name ]
          , listView panel.todos
@@ -173,7 +177,7 @@ replacePanel panel@{ name: name } panels =
   let { init: init, rest: rest } = span (\{ name: name' } -> name == name') panels
   in map (\tail -> init <> [panel] <> tail) (tail rest)
 
-handleAction :: forall cs o m. Action → H.HalogenM State Action cs o m Unit
+handleAction :: forall cs o m. MonadEffect m => Action → H.HalogenM State Action cs o m Unit
 handleAction = case _ of
   Dragging todo -> H.modify_ \st -> st { transitioning = Just todo }
   DroppedOn panel -> H.modify_ \st ->
@@ -184,4 +188,8 @@ handleAction = case _ of
     in st { transitioning = Nothing
           , panels = panels''
           }
+  PreventDefault e next -> do
+    H.liftEffect $ preventDefault e
+    handleAction next
+  Noop -> pure unit
         
