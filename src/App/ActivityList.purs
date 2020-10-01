@@ -127,7 +127,7 @@ panelsView state =
 panelsListView :: forall cs m. Panel -> HTML.HTML cs Action
 panelsListView panel =
   HH.div [ Prop.class_ (ClassName "panel"), Prop.id_ "activityInventoryList"
-         , HE.onDragEnter (\de -> Just $ PreventDefault (DE.toEvent de) Noop)
+         , HE.onDragOver (\de -> Just $ PreventDefault (DE.toEvent de) Noop)
          , HE.onDrop (\de -> Just $ PreventDefault (DE.toEvent de) (DroppedOn panel))
          ]
          [ HH.h1_ [ HH.text panel.name ]
