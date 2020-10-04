@@ -3,9 +3,9 @@ module App.ActivityList where
 import Prelude
 
 import Control.Monad.State (state)
-import Data.Array (fromFoldable, delete, snoc, span, tail)
-import Data.List (List, singleton)
-import Data.Maybe (Maybe(..), fromJust)
+import Data.Array (fromFoldable, delete, cons, snoc, span, tail, any, head, (:), singleton)
+import Data.List (List)
+import Data.Maybe (Maybe(..), fromMaybe, maybe)
 import Halogen (AttrName(..), ClassName(..))
 import Halogen as H
 import Halogen.HTML (HTML(..))
@@ -166,6 +166,16 @@ render state =
 removeTodoFromPanel :: Todo -> Panel -> Panel
 removeTodoFromPanel todo panel@{ todos: todos } = panel { todos = delete todo todos }
 
+inPanel :: Todo -> Panel -> Boolean
+inPanel todo@{ name: name' } panel = any (\{ name: name } -> name == name') panel.todos
+
+splitPanelsByTodo :: Todo -> Array Panel -> Maybe { init :: Array Panel, panel :: Panel, rest :: Array Panel }
+splitPanelsByTodo todo panels =
+  let { init: init, rest: rest } = span (inPanel todo) panels
+      maybePanel = head rest
+      rest' = fromMaybe [] (tail rest)
+  in map (\panel -> {init, panel, rest: rest'}) maybePanel
+
 removeTodo :: Todo -> Array Panel -> Array Panel
 removeTodo todo = map (removeTodoFromPanel todo)
 
@@ -175,19 +185,28 @@ addTodo todo panel@{ todos: todos } = panel { todos = snoc todos todo }
 replacePanel :: Panel -> Array Panel -> Maybe (Array Panel)
 replacePanel panel@{ name: name } panels =
   let { init: init, rest: rest } = span (\{ name: name' } -> name == name') panels
-  in map (\tail -> init <> [panel] <> tail) (tail rest)
+  in map (\tail -> init <> singleton panel <> tail) (tail rest)
 
 handleAction :: forall cs o m. MonadEffect m => Action → H.HalogenM State Action cs o m Unit
 handleAction = case _ of
   Dragging todo -> H.modify_ \st -> st { transitioning = Just todo }
   DroppedOn panel -> H.modify_ \st ->
-    let todo = unsafePartial (fromJust st.transitioning)
-        panels' = removeTodo todo st.panels
-        destPanel' = addTodo todo panel
-        panels'' = unsafePartial $ fromJust $ replacePanel destPanel' panels'
-    in st { transitioning = Nothing
-          , panels = panels''
-          }
+    let maybePanels = do
+          todo <- st.transitioning
+          {init, panel: srcPanel, rest} <- splitPanelsByTodo todo st.panels
+          let srcPanel' = removeTodoFromPanel todo srcPanel
+              panels = init <> singleton srcPanel' <> rest
+              panels' = map (\panel' -> if panel.name == panel'.name
+                                        then panel' { todos = cons todo (panel'.todos) }
+                                        else panel')
+                            panels
+          Just panels'
+    in maybe st
+             (\panels -> st { transitioning = Nothing
+                            , panels = panels
+                            }
+             )
+             maybePanels
   PreventDefault e next -> do
     H.liftEffect $ preventDefault e
     handleAction next
