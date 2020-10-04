@@ -136,7 +136,7 @@ panelsListView panel =
 
 listView :: forall cs m. Array Todo -> HH.HTML cs Action
 listView todos =
-  HH.div [ Prop.class_ (ClassName "itemContainer")] (map todoView  todos)
+  HH.div [ Prop.class_ (ClassName "itemContainer")] (map todoView todos)
 
 todoView :: forall cs. Todo -> HH.HTML cs Action
 todoView todo =
@@ -192,4 +192,3 @@ handleAction = case _ of
     H.liftEffect $ preventDefault e
     handleAction next
   Noop -> pure unit
-        
