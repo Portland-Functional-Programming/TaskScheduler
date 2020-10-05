@@ -20,7 +20,6 @@ import Effect.Class (class MonadEffect)
 import Prelude as List
 
 import Partial.Unsafe (unsafePartial)
-import Debug.Trace (trace)
 import Unsafe.Coerce (unsafeCoerce)
 
 data Priority = High
@@ -171,7 +170,7 @@ inPanel todo@{ name: name' } panel = any (\{ name: name } -> name == name') pane
 
 splitPanelsByTodo :: Todo -> Array Panel -> Maybe { init :: Array Panel, panel :: Panel, rest :: Array Panel }
 splitPanelsByTodo todo panels =
-  let { init: init, rest: rest } = span (inPanel todo) panels
+  let { init: init, rest: rest } = span (inPanel todo >>> not) panels
       maybePanel = head rest
       rest' = fromMaybe [] (tail rest)
   in map (\panel -> {init, panel, rest: rest'}) maybePanel
