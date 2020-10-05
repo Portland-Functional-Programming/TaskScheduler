@@ -175,17 +175,6 @@ splitPanelsByTodo todo panels =
       rest' = fromMaybe [] (tail rest)
   in map (\panel -> {init, panel, rest: rest'}) maybePanel
 
-removeTodo :: Todo -> Array Panel -> Array Panel
-removeTodo todo = map (removeTodoFromPanel todo)
-
-addTodo :: Todo -> Panel -> Panel
-addTodo todo panel@{ todos: todos } = panel { todos = snoc todos todo }
-
-replacePanel :: Panel -> Array Panel -> Maybe (Array Panel)
-replacePanel panel@{ name: name } panels =
-  let { init: init, rest: rest } = span (\{ name: name' } -> name == name') panels
-  in map (\tail -> init <> singleton panel <> tail) (tail rest)
-
 handleAction :: forall cs o m. MonadEffect m => Action → H.HalogenM State Action cs o m Unit
 handleAction = case _ of
   Dragging todo -> H.modify_ \st -> st { transitioning = Just todo }
