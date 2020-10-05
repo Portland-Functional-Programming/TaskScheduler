@@ -2,25 +2,16 @@ module App.ActivityList where
 
 import Prelude
 
-import Control.Monad.State (state)
-import Data.Array (fromFoldable, delete, cons, snoc, span, tail, any, head, (:), singleton)
-import Data.List (List)
+import Data.Array (delete, cons, span, tail, any, head, singleton)
 import Data.Maybe (Maybe(..), fromMaybe, maybe)
 import Halogen (AttrName(..), ClassName(..))
 import Halogen as H
-import Halogen.HTML (HTML(..))
 import Halogen.HTML as HH
-import Halogen.HTML as HTML
 import Halogen.HTML.Events as HE
-import Halogen.HTML.Properties (id_)
 import Halogen.HTML.Properties as Prop
 import Web.HTML.Event.DragEvent as DE
 import Web.Event.Event (Event, preventDefault)
 import Effect.Class (class MonadEffect)
-import Prelude as List
-
-import Partial.Unsafe (unsafePartial)
-import Unsafe.Coerce (unsafeCoerce)
 
 data Priority = High
               | Medium
