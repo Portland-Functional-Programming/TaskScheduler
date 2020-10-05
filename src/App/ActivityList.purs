@@ -100,7 +100,7 @@ sidebarView state =
       ]
     ]
 
-panelsView :: forall cs m. State -> HH.HTML cs Action
+panelsView :: forall cs. State -> HH.HTML cs Action
 panelsView state =
   HH.div [ Prop.classes [ClassName "column"]]
     [
@@ -114,7 +114,7 @@ panelsView state =
       ]
     ]
 
-panelsListView :: forall cs m. Panel -> HTML.HTML cs Action
+panelsListView :: forall cs. Panel -> HH.HTML cs Action
 panelsListView panel =
   HH.div [ Prop.class_ (ClassName "panel"), Prop.id_ "activityInventoryList"
          , HE.onDragOver (\de -> Just $ PreventDefault (DE.toEvent de) Noop)
@@ -124,7 +124,7 @@ panelsListView panel =
          , listView panel.todos
          ]
 
-listView :: forall cs m. Array Todo -> HH.HTML cs Action
+listView :: forall cs. Array Todo -> HH.HTML cs Action
 listView todos =
   HH.div [ Prop.class_ (ClassName "itemContainer")] (map todoView todos)
 
