@@ -2,8 +2,8 @@ module App.ActivityList where
 
 import Prelude
 
-import Data.Array (delete, cons, span, tail, any, head, singleton)
-import Data.Maybe (Maybe(..), fromMaybe, maybe)
+import Data.Array (filter)
+import Data.Maybe (Maybe(..), maybe)
 import Halogen (AttrName(..), ClassName(..))
 import Halogen as H
 import Halogen.HTML as HH
@@ -19,8 +19,20 @@ data Priority = High
 
 derive instance eqPriority :: Eq Priority
 
+data Panel = ActivityInventoryList
+           | TodoToday
+           | TodoNow
+
+derive instance eqPanel :: Eq Panel
+
+showPanel :: Panel -> String
+showPanel ActivityInventoryList = "Activity Inventory List"
+showPanel TodoToday = "Todo Today"
+showPanel TodoNow = "Todo Now"
+
 type Todo =
-  { name :: String
+  { panel :: Panel
+  , name :: String
   , priority :: Priority
   }
 
@@ -32,39 +44,30 @@ type ActivityInventoryList =
   { todos :: Maybe (Array Todo)
   }
 
-type Panel =
-  { name :: String
-  , todos :: Array Todo
-  }
-
 initialTodos :: Array Todo
-initialTodos = [ { name : "Finish planning",
+initialTodos = [ { panel : ActivityInventoryList
+                 , name : "Finish planning",
                    priority : High
                  }
-               , { name : "next",
+               , { panel : ActivityInventoryList
+                 , name : "next",
                    priority : Medium
                  }
-               , { name : "trivial task",
+               , { panel : ActivityInventoryList
+                 , name : "trivial task",
                    priority : Medium
                  }
                ]
 
 initialPanels :: Array Panel
-initialPanels = [ { name: "Activity Inventory List"
-                  , todos: initialTodos
-                  }
-                , { name: "Todo Today"
-                  , todos: []
-                  }
-                , { name: "Currently doing"
-                  , todos: []
-                  }
+initialPanels = [ ActivityInventoryList
+                , TodoNow
+                , TodoToday
                 ]
 
 type State =
     { panels :: Array Panel
-    , todoNow :: Maybe TodoNow
-    , selectedTodo :: Maybe Todo
+    , todos :: Array Todo
     , transitioning :: Maybe Todo
     }
 
@@ -77,8 +80,7 @@ component :: forall q i o m. MonadEffect m => H.Component HH.HTML q i o m
 component =
   H.mkComponent
     { initialState: \_ -> { panels: initialPanels
-                          , todoNow: Nothing
-                          , selectedTodo: Nothing
+                          , todos: initialTodos
                           , transitioning: Nothing}
     , render
     , eval: H.mkEval $ H.defaultEval { handleAction = handleAction }
@@ -109,19 +111,19 @@ panelsView state =
         HH.div [ Prop.id_"Todo"]
           [
             HH.div [ Prop.class_ (ClassName "container")]
-            (map panelsListView state.panels)
+            (map (panelsListView state) state.panels)
           ]
       ]
     ]
 
-panelsListView :: forall cs. Panel -> HH.HTML cs Action
-panelsListView panel =
+panelsListView :: forall cs. State -> Panel -> HH.HTML cs Action
+panelsListView state panel =
   HH.div [ Prop.class_ (ClassName "panel"), Prop.id_ "activityInventoryList"
          , HE.onDragOver (\de -> Just $ PreventDefault (DE.toEvent de) Noop)
          , HE.onDrop (\de -> Just $ PreventDefault (DE.toEvent de) (DroppedOn panel))
          ]
-         [ HH.h1_ [ HH.text panel.name ]
-         , listView panel.todos
+         [ HH.h1_ [ HH.text (showPanel panel) ]
+         , listView (filter (\todo -> todo.panel == panel) state.todos)
          ]
 
 listView :: forall cs. Array Todo -> HH.HTML cs Action
@@ -153,39 +155,22 @@ render state =
     , panelsView state
     ]
 
-removeTodoFromPanel :: Todo -> Panel -> Panel
-removeTodoFromPanel todo panel@{ todos: todos } = panel { todos = delete todo todos }
-
-inPanel :: Todo -> Panel -> Boolean
-inPanel todo@{ name: name' } panel = any (\{ name: name } -> name == name') panel.todos
-
-splitPanelsByTodo :: Todo -> Array Panel -> Maybe { init :: Array Panel, panel :: Panel, rest :: Array Panel }
-splitPanelsByTodo todo panels =
-  let { init: init, rest: rest } = span (inPanel todo >>> not) panels
-      maybePanel = head rest
-      rest' = fromMaybe [] (tail rest)
-  in map (\panel -> {init, panel, rest: rest'}) maybePanel
-
 handleAction :: forall cs o m. MonadEffect m => Action → H.HalogenM State Action cs o m Unit
 handleAction = case _ of
   Dragging todo -> H.modify_ \st -> st { transitioning = Just todo }
   DroppedOn panel -> H.modify_ \st ->
-    let maybePanels = do
+    let maybeTodos = do
           todo <- st.transitioning
-          {init, panel: srcPanel, rest} <- splitPanelsByTodo todo st.panels
-          let srcPanel' = removeTodoFromPanel todo srcPanel
-              panels = init <> singleton srcPanel' <> rest
-              panels' = map (\panel' -> if panel.name == panel'.name
-                                        then panel' { todos = cons todo (panel'.todos) }
-                                        else panel')
-                            panels
-          Just panels'
+          Just $ map (\todo2 -> if todo == todo2
+                                then todo { panel = panel }
+                                else todo2)
+                     st.todos
     in maybe st
-             (\panels -> st { transitioning = Nothing
-                            , panels = panels
-                            }
+             (\todos -> st { transitioning = Nothing
+                           , todos = todos
+                           }
              )
-             maybePanels
+             maybeTodos
   PreventDefault e next -> do
     H.liftEffect $ preventDefault e
     handleAction next
