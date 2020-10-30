@@ -19,9 +19,13 @@ data Priority = High
 
 derive instance eqPriority :: Eq Priority
 
+data Tag = Tag String
+derive instance eqTag :: Eq Tag
+
 type Todo =
   { name :: String
   , priority :: Priority
+  , tags :: Array Tag
   }
 
 type TodoNow =
@@ -38,14 +42,17 @@ type Panel =
   }
 
 initialTodos :: Array Todo
-initialTodos = [ { name : "Finish planning",
-                   priority : High
+initialTodos = [ { name : "Finish planning"
+                 , priority : High
+                 , tags: [Tag "work", Tag "home"]
                  }
-               , { name : "next",
-                   priority : Medium
+               , { name : "next"
+                 , priority : Medium
+                 , tags : [Tag "work"]
                  }
-               , { name : "trivial task",
-                   priority : Medium
+               , { name : "trivial task"
+                 , priority : Medium
+                 , tags : [Tag "home"]
                  }
                ]
 
@@ -128,14 +135,18 @@ listView :: forall cs. Array Todo -> HH.HTML cs Action
 listView todos =
   HH.div [ Prop.class_ (ClassName "itemContainer")] (map todoView todos)
 
+tagsView :: forall cs. Array Tag -> HH.HTML cs Action
+tagsView tags = HH.ul_ (map (\(Tag tag) -> HH.li_ [HH.text tag]) tags)
+
 todoView :: forall cs. Todo -> HH.HTML cs Action
 todoView todo =
-  HH.li
+  HH.div
     [ Prop.class_ $ ClassName "item"
     , Prop.attr (AttrName "style")  $ "background-color: " <> priorityToColor todo.priority
     , Prop.attr (AttrName "draggable") "true"
     , HE.onDragStart \_ -> Just $ Dragging todo
     ] [ HH.text  todo.name
+      , tagsView todo.tags
       ]
 
 -- Helper
