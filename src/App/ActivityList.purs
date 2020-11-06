@@ -73,11 +73,13 @@ type State =
     , todoNow :: Maybe TodoNow
     , selectedTodo :: Maybe Todo
     , transitioning :: Maybe Todo
+    , showTagModal :: bool
     }
 
 data Action = Dragging Todo
             | DroppedOn Panel
             | PreventDefault Event Action
+            | OpenAddTagModal Todo
             | Noop
 
 component :: forall q i o m. MonadEffect m => H.Component HH.HTML q i o m
@@ -147,7 +149,20 @@ todoView todo =
     , HE.onDragStart \_ -> Just $ Dragging todo
     ] [ HH.text  todo.name
       , tagsView todo.tags
+      , HH.button [ Prop.classes [ClassName "button", ClassName "is-primary"]
+                  , HE.onClick \_ -> Just $ OpenAddTagModal todo
+                  ]
+                  [ HH.text "Add Tag"]
       ]
+
+modalView =
+    HH.div
+        [ Prop.class_ $ ClassName "modal"
+        , if
+        ]
+        [ HH.div [Prop.class_ $ ClassName "modal-background" ] []
+        , HH.div [Prop.class_ $ ClassName "modal-content"] []
+        ]
 
 -- Helper
 priorityToColor :: Priority -> String
@@ -200,4 +215,8 @@ handleAction = case _ of
   PreventDefault e next -> do
     H.liftEffect $ preventDefault e
     handleAction next
+
+  OpenAddTagModal todo ->
+
+
   Noop -> pure unit
