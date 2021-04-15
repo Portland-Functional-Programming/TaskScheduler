@@ -3,7 +3,7 @@ module App.ActivityList where
 import Prelude
 
 import Data.Array (delete, cons, span, tail, any, head, singleton)
-import Data.Maybe (Maybe(..), fromMaybe, maybe)
+import Data.Maybe (Maybe(..), fromMaybe, maybe, isJust)
 import Halogen (AttrName(..), ClassName(..))
 import Halogen as H
 import Halogen.HTML as HH
@@ -73,6 +73,7 @@ type State =
     , todoNow :: Maybe TodoNow
     , selectedTodo :: Maybe Todo
     , transitioning :: Maybe Todo
+    , modalTarget :: Maybe Todo
     , showTagModal :: Boolean
     }
 
@@ -80,6 +81,7 @@ data Action = Dragging Todo
             | DroppedOn Panel
             | PreventDefault Event Action
             | OpenAddTagModal Todo
+            | SaveTag Todo Tag
             | Noop
 
 component :: forall q i o m. MonadEffect m => H.Component HH.HTML q i o m
@@ -90,6 +92,7 @@ component =
                           , selectedTodo: Nothing
                           , transitioning: Nothing
                           , showTagModal: false
+                          , modalTarget: Nothing
                           }
     , render
     , eval: H.mkEval $ H.defaultEval { handleAction = handleAction }
@@ -173,7 +176,7 @@ tagForm =
 modalCard :: forall cs. State -> HH.HTML cs Action -> HH.HTML cs Action
 modalCard state content =
   HH.div
-        [ Prop.classes let classes = if state.showTagModal
+        [ Prop.classes let classes = if isJust state.modalTarget
                                      then [ClassName "modal", ClassName "is-active"]
                                      else [ClassName "modal"]
                        in classes
@@ -188,7 +191,10 @@ modalCard state content =
             [content]
           , HH.footer
             [Prop.class_ $ ClassName "modal-card-foot"]
-            [HH.button [Prop.classes [ClassName "button", ClassName "is-success"]] [HH.text "Save Tag"]]
+            [HH.button [ Prop.classes [ClassName "button", ClassName "is-success"]
+                       , HE.onClick \_ -> map (\todo -> SaveTag todo (Tag "home")) state.modalTarget]
+                       [HH.text "Save Tag"]
+            ]
           ]
         ]
 
@@ -224,7 +230,7 @@ splitPanelsByTodo todo panels =
       rest' = fromMaybe [] (tail rest)
   in map (\panel -> {init, panel, rest: rest'}) maybePanel
 
-handleAction :: forall cs o m. MonadEffect m => Action → H.HalogenM State Action cs o m Unit
+handleAction :: forall cs o m. MonadEffect m => Action -> H.HalogenM State Action cs o m Unit
 handleAction = case _ of
   Dragging todo -> H.modify_ \st -> st { transitioning = Just todo }
   DroppedOn panel -> H.modify_ \st ->
@@ -248,5 +254,6 @@ handleAction = case _ of
     H.liftEffect $ preventDefault e
     handleAction next
 
-  OpenAddTagModal todo -> H.modify_ \st -> st { showTagModal = true }
+  OpenAddTagModal todo -> H.modify_ \st -> st { modalTarget = Just todo }
+  SaveTag _ _ -> H.modify_ \st -> st { modalTarget = Nothing }
   Noop -> pure unit
