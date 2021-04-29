@@ -3,6 +3,7 @@ module App.Model where
 import Prelude
 
 import Data.Maybe (Maybe)
+import Web.Event.Event (Event)
 
 data Priority = High
               | Medium
