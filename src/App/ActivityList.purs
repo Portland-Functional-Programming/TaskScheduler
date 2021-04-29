@@ -12,34 +12,14 @@ import Halogen.HTML.Properties as Prop
 import Web.HTML.Event.DragEvent as DE
 import Web.Event.Event (Event, preventDefault)
 import Effect.Class (class MonadEffect)
+import App.Model
 
-data Priority = High
-              | Medium
-              | Low
-
-derive instance eqPriority :: Eq Priority
-
-data Tag = Tag String
-derive instance eqTag :: Eq Tag
-
-type Todo =
-  { name :: String
-  , priority :: Priority
-  , tags :: Array Tag
-  }
-
-type TodoNow =
-  { todos :: Maybe (Array Todo)
-  } 
-
-type ActivityInventoryList =
-  { todos :: Maybe (Array Todo)
-  }
-
-type Panel =
-  { name :: String
-  , todos :: Array Todo
-  }
+data Action = Dragging Todo
+            | DroppedOn Panel
+            | PreventDefault Event Action
+            | OpenAddTagModal Todo
+            | SaveTag Todo Tag
+            | Noop
 
 initialTodos :: Array Todo
 initialTodos = [ { name : "Finish planning"
@@ -67,22 +47,6 @@ initialPanels = [ { name: "Activity Inventory List"
                   , todos: []
                   }
                 ]
-
-type State =
-    { panels :: Array Panel
-    , todoNow :: Maybe TodoNow
-    , selectedTodo :: Maybe Todo
-    , transitioning :: Maybe Todo
-    , modalTarget :: Maybe Todo
-    , showTagModal :: Boolean
-    }
-
-data Action = Dragging Todo
-            | DroppedOn Panel
-            | PreventDefault Event Action
-            | OpenAddTagModal Todo
-            | SaveTag Todo Tag
-            | Noop
 
 component :: forall q i o m. MonadEffect m => H.Component HH.HTML q i o m
 component =
