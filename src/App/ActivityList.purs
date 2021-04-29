@@ -14,13 +14,6 @@ import Web.Event.Event (Event, preventDefault)
 import Effect.Class (class MonadEffect)
 import App.Model
 
-data Action = Dragging Todo
-            | DroppedOn Panel
-            | PreventDefault Event Action
-            | OpenAddTagModal Todo
-            | SaveTag Todo Tag
-            | Noop
-
 initialTodos :: Array Todo
 initialTodos = [ { name : "Finish planning"
                  , priority : High

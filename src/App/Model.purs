@@ -21,7 +21,7 @@ type Todo =
 
 type TodoNow =
   { todos :: Maybe (Array Todo)
-  } 
+  }
 
 type ActivityInventoryList =
   { todos :: Maybe (Array Todo)
@@ -41,3 +41,9 @@ type State =
     , showTagModal :: Boolean
     }
 
+data Action = Dragging Todo
+            | DroppedOn Panel
+            | PreventDefault Event Action
+            | OpenAddTagModal Todo
+            | SaveTag Todo Tag
+            | Noop
