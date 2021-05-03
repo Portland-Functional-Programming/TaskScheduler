@@ -1,13 +1,13 @@
 module App.TagModal where
 
-import Prelude
+import Prelude (map, ($))
 
 import Data.Maybe (isJust)
 import Halogen (ClassName(..))
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as Prop
-import App.Model
+import App.Model (Action(..), State, Tag(..))
 
 tagForm :: forall cs. HH.HTML cs Action
 tagForm =

@@ -1,6 +1,6 @@
 module App.ActivityList where
 
-import Prelude
+import Prelude (Unit, bind, discard, map, not, pure, unit, ($), (<>), (==), (>>>))
 
 import Data.Array (delete, cons, span, tail, any, head, singleton)
 import Data.Maybe (Maybe(..), fromMaybe, maybe)
@@ -12,8 +12,8 @@ import Halogen.HTML.Properties as Prop
 import Web.HTML.Event.DragEvent as DE
 import Web.Event.Event (preventDefault)
 import Effect.Class (class MonadEffect)
-import App.Model
-import App.TagModal
+import App.Model (Action(..), Panel, Priority(..), State, Tag(..), Todo)
+import App.TagModal (modalView)
 
 initialTodos :: Array Todo
 initialTodos = [ { name : "Finish planning"
