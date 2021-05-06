@@ -1,26 +1,29 @@
-module App.TagModal (component) where
+module App.TagModal (component, Output(..)) where
 
-import Prelude (($))
+import Prelude (($), Unit)
 
 import Data.List (List(..))
+import Data.Maybe (Maybe(Just))
 import Halogen (ClassName(..), mkComponent)
 import Halogen as H
 import Halogen.HTML as HH
---import Halogen.HTML.Events as HE
+import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as Prop
 import App.Model (Tag, Todo)
 
 type Input = Todo
+data Output = TagModalCanceled
 type State = { todo :: Todo
              , tags :: List Tag
              }
+data Action = Cancel
 
-component :: forall query output m. H.Component HH.HTML query Input output m
+component :: forall query m. H.Component HH.HTML query Input Output m
 component =
   mkComponent
     { initialState
     , render
-    , eval: H.mkEval H.defaultEval
+    , eval: H.mkEval H.defaultEval { handleAction = handleAction }
     }
 
 initialState :: Input -> State
@@ -28,7 +31,10 @@ initialState todo' = { todo: todo'
                     , tags: Nil
                     }
 
-render :: forall action slots m. State -> H.ComponentHTML action slots m
+handleAction :: forall m. Action -> H.HalogenM State Action () Output m Unit
+handleAction Cancel = H.raise TagModalCanceled  -- Tell the parent component to close the tag modal.
+
+render :: forall slots m. State -> H.ComponentHTML Action slots m
 render state = modalCard state tagForm
 
 tagForm :: forall cs action. HH.HTML cs action
@@ -44,7 +50,7 @@ tagForm =
              ]
            ]
 
-modalCard :: forall cs action. State -> HH.HTML cs action -> HH.HTML cs action
+modalCard :: forall cs. State -> HH.HTML cs Action -> HH.HTML cs Action
 modalCard state content =
   HH.div
   [ Prop.classes [ClassName "modal", ClassName "is-active"]]
@@ -59,11 +65,16 @@ modalCard state content =
       [content]
     , HH.footer
       [Prop.class_ $ ClassName "modal-card-foot"]
-      [HH.button
-       [ Prop.classes [ClassName "button", ClassName "is-success"]
-         --, HE.onClick \_ -> map (\todo -> SaveTag todo (Tag "home")) state.modalTarget
-       ]
-       [HH.text "Save Tag"]
+      [ HH.button
+        [ Prop.classes [ClassName "button", ClassName "is-primary"]
+          --, HE.onClick \_ -> map (\todo -> SaveTag todo (Tag "home")) state.modalTarget
+        ]
+        [HH.text "Save Tag"]
+      , HH.button
+        [ Prop.class_ $ ClassName "button"
+        , HE.onClick \_ -> Just Cancel
+        ]
+        [HH.text "Cancel"]
       ]
     ]
   ]

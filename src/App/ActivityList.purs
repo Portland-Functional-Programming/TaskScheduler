@@ -1,6 +1,6 @@
 module App.ActivityList where
 
-import Prelude (Unit, Void, bind, discard, map, not, pure, unit, ($), (<>), (==), (>>>), absurd)
+import Prelude (Unit, bind, discard, map, not, pure, unit, ($), (<>), (==), (>>>), (<<<))
 
 import Data.Array (delete, cons, span, tail, any, head, singleton)
 import Data.Maybe (Maybe(..), fromMaybe, maybe)
@@ -11,14 +11,44 @@ import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as Prop
 import Data.Symbol (SProxy(..))
 import Web.HTML.Event.DragEvent as DE
-import Web.Event.Event (preventDefault)
+import Web.Event.Event (Event, preventDefault)
 import Effect.Class (class MonadEffect)
-import App.Model (Action(..), Panel, Priority(..), State, Tag(..), Todo)
+import App.Model (Priority(..), Tag(..), Todo)
 import App.TagModal as TagModal
 
-type Slots = ( tagModal :: forall query. H.Slot query Void Int )
+type Slots = (tagModal :: forall query. H.Slot query TagModal.Output Int)
 
 _tagModal = SProxy :: SProxy "tagModal"
+
+type TodoNow =
+  { todos :: Maybe (Array Todo)
+  }
+
+type ActivityInventoryList =
+  { todos :: Maybe (Array Todo)
+  }
+
+type Panel =
+  { name :: String
+  , todos :: Array Todo
+  }
+
+type State =
+    { panels :: Array Panel
+    , todoNow :: Maybe TodoNow
+    , selectedTodo :: Maybe Todo
+    , transitioning :: Maybe Todo
+    , modalTarget :: Maybe Todo
+    , showTagModal :: Boolean
+    }
+
+data Action = Dragging Todo
+            | DroppedOn Panel
+            | PreventDefault Event Action
+            | OpenAddTagModal Todo
+            | SaveTag Todo Tag
+            | HandleTagModal TagModal.Output
+            | Noop
 
 initialTodos :: Array Todo
 initialTodos = [ { name : "Finish planning"
@@ -139,8 +169,8 @@ render state =
     , renderTagModal state.modalTarget
     ]
 
-renderTagModal :: forall action m. Maybe Todo -> H.ComponentHTML action Slots m
-renderTagModal (Just todo) = HH.slot _tagModal 0 TagModal.component todo absurd
+renderTagModal :: forall m. Maybe Todo -> H.ComponentHTML Action Slots m
+renderTagModal (Just todo) = HH.slot _tagModal 0 TagModal.component todo (Just <<< HandleTagModal)
 renderTagModal Nothing = HH.text ""
 
 removeTodoFromPanel :: Todo -> Panel -> Panel
@@ -182,4 +212,5 @@ handleAction = case _ of
 
   OpenAddTagModal todo -> H.modify_ \st -> st { modalTarget = Just todo }
   SaveTag _ _ -> H.modify_ \st -> st { modalTarget = Nothing }
+  HandleTagModal TagModal.TagModalCanceled -> H.modify_ \st -> st { modalTarget = Nothing }
   Noop -> pure unit
