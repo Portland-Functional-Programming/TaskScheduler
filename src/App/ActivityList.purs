@@ -1,6 +1,6 @@
 module App.ActivityList where
 
-import Prelude (Unit, bind, discard, map, not, pure, unit, ($), (<>), (==), (>>>))
+import Prelude (Unit, Void, bind, discard, map, not, pure, unit, ($), (<>), (==), (>>>), absurd)
 
 import Data.Array (delete, cons, span, tail, any, head, singleton)
 import Data.Maybe (Maybe(..), fromMaybe, maybe)
@@ -9,11 +9,16 @@ import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as Prop
+import Data.Symbol (SProxy(..))
 import Web.HTML.Event.DragEvent as DE
 import Web.Event.Event (preventDefault)
 import Effect.Class (class MonadEffect)
 import App.Model (Action(..), Panel, Priority(..), State, Tag(..), Todo)
-import App.TagModal (modalView)
+import App.TagModal as TagModal
+
+type Slots = ( tagModal :: forall query. H.Slot query Void Int )
+
+_tagModal = SProxy :: SProxy "tagModal"
 
 initialTodos :: Array Todo
 initialTodos = [ { name : "Finish planning"
@@ -126,13 +131,17 @@ priorityToColor priority =
     Medium -> "#f5f588"
     Low -> "#469dd0"
 
-render :: forall slots m. State -> H.ComponentHTML Action slots m
+render :: forall m. State -> H.ComponentHTML Action Slots m
 render state =
   HH.div [ Prop.class_ (ClassName "columns")]
     [ sidebarView state
     , panelsView state
-    , modalView state
+    , renderTagModal state.modalTarget
     ]
+
+renderTagModal :: forall action m. Maybe Todo -> H.ComponentHTML action Slots m
+renderTagModal (Just todo) = HH.slot _tagModal 0 TagModal.component todo absurd
+renderTagModal Nothing = HH.text ""
 
 removeTodoFromPanel :: Todo -> Panel -> Panel
 removeTodoFromPanel todo panel@{ todos: todos } = panel { todos = delete todo todos }
