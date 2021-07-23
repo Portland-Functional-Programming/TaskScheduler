@@ -213,4 +213,5 @@ handleAction = case _ of
   OpenAddTagModal todo -> H.modify_ \st -> st { modalTarget = Just todo }
   SaveTag _ _ -> H.modify_ \st -> st { modalTarget = Nothing }
   HandleTagModal TagModal.TagModalCanceled -> H.modify_ \st -> st { modalTarget = Nothing }
+  --HandleTagModal (TagModal.TagsAdded todo tags) -> H.modify_ \st -> st { modalTarget = Nothing }
   Noop -> pure unit
