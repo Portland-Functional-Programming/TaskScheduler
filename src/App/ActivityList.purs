@@ -84,7 +84,7 @@ data Action = Dragging Todo
             | SaveTag Todo Tag
             | Noop
 
-component :: forall q i o m. MonadEffect m => H.Component HH.HTML q i o m
+component :: forall q i o m. MonadEffect m => H.Component q i o m
 component =
   H.mkComponent
     { initialState: \_ -> { panels: initialPanels
@@ -131,8 +131,8 @@ panelsView state =
 panelsListView :: forall cs. Panel -> HH.HTML cs Action
 panelsListView panel =
   HH.div [ Prop.class_ (ClassName "panel"), Prop.id_ "activityInventoryList"
-         , HE.onDragOver (\de -> Just $ PreventDefault (DE.toEvent de) Noop)
-         , HE.onDrop (\de -> Just $ PreventDefault (DE.toEvent de) (DroppedOn panel))
+         , HE.onDragOver (\de -> PreventDefault (DE.toEvent de) Noop)
+         , HE.onDrop (\de -> PreventDefault (DE.toEvent de) (DroppedOn panel))
          ]
          [ HH.h1_ [ HH.text panel.name ]
          , listView panel.todos
@@ -151,11 +151,8 @@ todoView todo =
     [ Prop.class_ $ ClassName "item"
     , Prop.attr (AttrName "style")  $ "background-color: " <> priorityToColor todo.priority
     , Prop.attr (AttrName "draggable") "true"
-    , HE.onDragStart \_ -> Just $ Dragging todo
     ] [ HH.text  todo.name
-      , tagsView todo.tags
       , HH.button [ Prop.classes [ClassName "button", ClassName "is-primary"]
-                  , HE.onClick \_ -> Just $ OpenAddTagModal todo
                   ]
                   [ HH.text "Add Tag"]
       ]
@@ -192,7 +189,7 @@ modalCard state content =
           , HH.footer
             [Prop.class_ $ ClassName "modal-card-foot"]
             [HH.button [ Prop.classes [ClassName "button", ClassName "is-success"]
-                       , HE.onClick \_ -> map (\todo -> SaveTag todo (Tag "home")) state.modalTarget]
+                       ]
                        [HH.text "Save Tag"]
             ]
           ]
