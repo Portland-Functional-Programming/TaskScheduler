@@ -1,11 +1,15 @@
 { name = "halogen-project"
 , dependencies =
-  [ "console"
+  [ "arrays"
+  , "console"
   , "debug"
   , "effect"
   , "halogen"
+  , "maybe"
+  , "prelude"
   , "psci-support"
   , "unsafe-coerce"
+  , "web-events"
   , "web-html"
   ]
 , packages = ./packages.dhall
