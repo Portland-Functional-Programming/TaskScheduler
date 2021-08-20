@@ -2,8 +2,8 @@ module App.ActivityList where
 
 import Prelude
 
-import Data.Array (span, tail, head, mapMaybe, singleton)
-import Data.Map (fromFoldableWith, toUnfoldable)
+import Data.Array (head, mapMaybe, singleton, span, tail)
+import Data.Map (Map, fromFoldable, fromFoldableWith, toUnfoldable, unionWith)
 import Data.Maybe (Maybe(..), fromMaybe, maybe, isJust)
 import Data.Tuple (Tuple(..), uncurry)
 import Effect.Class (class MonadEffect)
@@ -118,8 +118,8 @@ sidebarView state =
       ]
     ]
 
-fromFoldableOn :: forall k v. Ord k => (v -> Maybe k) -> Array v -> Array (Tuple k (Array v))
-fromFoldableOn vk todos = toUnfoldable $ fromFoldableWith append $ mapMaybe (\v -> flip Tuple [v] <$> vk v) todos
+fromArrayOn :: forall k v. Ord k => (v -> Maybe k) -> Array v -> Map k (Array v)
+fromArrayOn vk todos = fromFoldableWith append $ mapMaybe (\v -> flip Tuple [v] <$> vk v) todos
 
 panelsView :: forall cs. State -> HH.HTML cs Action
 panelsView state =
@@ -127,17 +127,19 @@ panelsView state =
     [
       HH.section [ Prop.class_ (ClassName "section")]
       [
-        HH.div [ Prop.id_"Todo"]
+        HH.div [ Prop.id "Todo"]
           [
             HH.div [ Prop.class_ (ClassName "container")]
-            (uncurry panelsListView <$> fromFoldableOn (\t -> t.associatedPanel) state.todos)
+            (uncurry panelsListView <$> toUnfoldable (allPanels `unionWith append` panelsWithTodos))
           ]
       ]
     ]
+  where allPanels = fromFoldable (flip Tuple [] <$> state.panels)
+        panelsWithTodos = fromArrayOn _.associatedPanel state.todos
 
 panelsListView :: forall cs. Panel -> Array Todo -> HH.HTML cs Action
 panelsListView panel todos =
-  HH.div [ Prop.class_ (ClassName "panel"), Prop.id_ "activityInventoryList"
+  HH.div [ Prop.class_ (ClassName "panel"), Prop.id "activityInventoryList"
          , HE.onDragOver (\de -> PreventDefault (DE.toEvent de) Noop)
          , HE.onDrop (\de -> PreventDefault (DE.toEvent de) (DroppedOn panel))
          ]
@@ -227,7 +229,7 @@ splitTodosByName todo todos =
   let { init: init, rest: rest } = span (\t -> t.name == todo.name) todos
       maybeTodo = head rest
       rest' = fromMaybe [] (tail rest)
-  in map (\todo -> {init, todo, rest: rest'}) maybeTodo
+  in (\t -> {init, todo: t, rest: rest'}) <$> maybeTodo
 
 handleAction :: forall cs o m. MonadEffect m => Action -> H.HalogenM State Action cs o m Unit
 handleAction = case _ of
