@@ -2,11 +2,10 @@ module App.ActivityList where
 
 import Prelude
 
-import Data.Array (delete, cons, span, tail, any, head, singleton)
-import Data.Map (fromFoldableWith)
+import Data.Array (span, tail, head, mapMaybe, singleton)
+import Data.Map (fromFoldableWith, toUnfoldable)
 import Data.Maybe (Maybe(..), fromMaybe, maybe, isJust)
 import Data.Tuple (Tuple(..), uncurry)
-import Debug (trace, traceM)
 import Effect.Class (class MonadEffect)
 import Halogen (AttrName(..), ClassName(..))
 import Halogen as H
@@ -29,7 +28,7 @@ type Todo =
   { name :: String
   , priority :: Priority
   , tags :: Array Tag
-  , associatedPanel :: Panel
+  , associatedPanel :: Maybe Panel
   }
 
 type TodoNow =
@@ -48,14 +47,17 @@ initialTodos :: Array Todo
 initialTodos = [ { name : "Finish planning"
                  , priority : High
                  , tags: [Tag "work", Tag "home"]
+                 , associatedPanel : head initialPanels
                  }
                , { name : "next"
                  , priority : Medium
                  , tags : [Tag "work"]
+                 , associatedPanel : head initialPanels
                  }
                , { name : "trivial task"
                  , priority : Medium
                  , tags : [Tag "home"]
+                 , associatedPanel : head initialPanels
                  }
                ]
 
@@ -69,7 +71,8 @@ initialPanels = [ { name: "Activity Inventory List"
                 ]
 
 type State =
-    { todos :: Array Todo
+    { panels :: Array Panel
+    , todos :: Array Todo
     , todoNow :: Maybe TodoNow
     , selectedTodo :: Maybe Todo
     , transitioning :: Maybe Todo
@@ -88,6 +91,7 @@ component :: forall q i o m. MonadEffect m => H.Component q i o m
 component =
   H.mkComponent
     { initialState: \_ -> { panels: initialPanels
+                          , todos: initialTodos
                           , todoNow: Nothing
                           , selectedTodo: Nothing
                           , transitioning: Nothing
@@ -114,6 +118,9 @@ sidebarView state =
       ]
     ]
 
+fromFoldableOn :: forall k v. Ord k => (v -> Maybe k) -> Array v -> Array (Tuple k (Array v))
+fromFoldableOn vk todos = toUnfoldable $ fromFoldableWith append $ mapMaybe (\v -> flip Tuple [v] <$> vk v) todos
+
 panelsView :: forall cs. State -> HH.HTML cs Action
 panelsView state =
   HH.div [ Prop.classes [ClassName "column"]]
@@ -123,17 +130,16 @@ panelsView state =
         HH.div [ Prop.id_"Todo"]
           [
             HH.div [ Prop.class_ (ClassName "container")]
-            (map (uncurry panelsListView) (?testHole state.todos))
+            (uncurry panelsListView <$> fromFoldableOn (\t -> t.associatedPanel) state.todos)
           ]
       ]
-
-
+    ]
 
 panelsListView :: forall cs. Panel -> Array Todo -> HH.HTML cs Action
 panelsListView panel todos =
   HH.div [ Prop.class_ (ClassName "panel"), Prop.id_ "activityInventoryList"
          , HE.onDragOver (\de -> PreventDefault (DE.toEvent de) Noop)
-         , HE.onDrop (\de -> trace "tester2aaaaaa" \_ -> PreventDefault (DE.toEvent de) (DroppedOn panel))
+         , HE.onDrop (\de -> PreventDefault (DE.toEvent de) (DroppedOn panel))
          ]
          [ HH.h1_ [ HH.text panel.name ]
          , listView todos
@@ -216,24 +222,30 @@ render state =
     , modalView state
     ]
 
-inPanel :: Todo -> Panel -> Boolean
-inPanel todo@{ name: name' } panel = any (\{ name: name } -> name == name') panel.todos
-
-splitPanelsByTodo :: Todo -> Array Panel -> Maybe { init :: Array Panel, panel :: Panel, rest :: Array Panel }
-splitPanelsByTodo todo panels =
-  let { init: init, rest: rest } = span (inPanel todo >>> not) panels
-      maybePanel = head rest
+splitTodosByName :: Todo -> Array Todo -> Maybe { init :: Array Todo, todo :: Todo, rest :: Array Todo }
+splitTodosByName todo todos =
+  let { init: init, rest: rest } = span (\t -> t.name == todo.name) todos
+      maybeTodo = head rest
       rest' = fromMaybe [] (tail rest)
-  in map (\panel -> {init, panel, rest: rest'}) maybePanel
+  in map (\todo -> {init, todo, rest: rest'}) maybeTodo
 
 handleAction :: forall cs o m. MonadEffect m => Action -> H.HalogenM State Action cs o m Unit
 handleAction = case _ of
   Dragging todo -> H.modify_ \st -> st { transitioning = Just todo }
   DroppedOn panel -> H.modify_ \st ->
-    ""
+    let maybeTodos = do
+          todo <- st.transitioning
+          {init, todo: draggedTodo, rest} <- splitTodosByName todo st.todos
+          let draggedTodo' = draggedTodo { associatedPanel = Just panel }
+              todos' = init <> singleton draggedTodo' <> rest
+          Just todos'
+    in maybe st
+             (\todos -> st { transitioning = Nothing
+                            , todos = todos
+                            }
+             )
+             maybeTodos
   PreventDefault e next -> do
-    let _ =  trace "test" (\_-> "some string")
-
     H.liftEffect $ preventDefault e
     handleAction next
 
