@@ -3,15 +3,18 @@ module App.ActivityList where
 import Prelude
 
 import Data.Array (delete, cons, span, tail, any, head, singleton)
+import Data.Map (fromFoldableWith)
 import Data.Maybe (Maybe(..), fromMaybe, maybe, isJust)
+import Data.Tuple (Tuple(..), uncurry)
+import Debug (trace, traceM)
+import Effect.Class (class MonadEffect)
 import Halogen (AttrName(..), ClassName(..))
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as Prop
-import Web.HTML.Event.DragEvent as DE
 import Web.Event.Event (Event, preventDefault)
-import Effect.Class (class MonadEffect)
+import Web.HTML.Event.DragEvent as DE
 
 data Priority = High
               | Medium
@@ -26,6 +29,7 @@ type Todo =
   { name :: String
   , priority :: Priority
   , tags :: Array Tag
+  , associatedPanel :: Panel
   }
 
 type TodoNow =
@@ -38,7 +42,6 @@ type ActivityInventoryList =
 
 type Panel =
   { name :: String
-  , todos :: Array Todo
   }
 
 initialTodos :: Array Todo
@@ -58,18 +61,15 @@ initialTodos = [ { name : "Finish planning"
 
 initialPanels :: Array Panel
 initialPanels = [ { name: "Activity Inventory List"
-                  , todos: initialTodos
                   }
                 , { name: "Todo Today"
-                  , todos: []
                   }
                 , { name: "Currently doing"
-                  , todos: []
                   }
                 ]
 
 type State =
-    { panels :: Array Panel
+    { todos :: Array Todo
     , todoNow :: Maybe TodoNow
     , selectedTodo :: Maybe Todo
     , transitioning :: Maybe Todo
@@ -123,20 +123,22 @@ panelsView state =
         HH.div [ Prop.id_"Todo"]
           [
             HH.div [ Prop.class_ (ClassName "container")]
-            (map panelsListView state.panels)
+            (map (uncurry panelsListView) (?testHole state.todos))
           ]
       ]
-    ]
 
-panelsListView :: forall cs. Panel -> HH.HTML cs Action
-panelsListView panel =
+
+
+panelsListView :: forall cs. Panel -> Array Todo -> HH.HTML cs Action
+panelsListView panel todos =
   HH.div [ Prop.class_ (ClassName "panel"), Prop.id_ "activityInventoryList"
          , HE.onDragOver (\de -> PreventDefault (DE.toEvent de) Noop)
-         , HE.onDrop (\de -> PreventDefault (DE.toEvent de) (DroppedOn panel))
+         , HE.onDrop (\de -> trace "tester2aaaaaa" \_ -> PreventDefault (DE.toEvent de) (DroppedOn panel))
          ]
          [ HH.h1_ [ HH.text panel.name ]
-         , listView panel.todos
+         , listView todos
          ]
+
 
 listView :: forall cs. Array Todo -> HH.HTML cs Action
 listView todos =
@@ -214,9 +216,6 @@ render state =
     , modalView state
     ]
 
-removeTodoFromPanel :: Todo -> Panel -> Panel
-removeTodoFromPanel todo panel@{ todos: todos } = panel { todos = delete todo todos }
-
 inPanel :: Todo -> Panel -> Boolean
 inPanel todo@{ name: name' } panel = any (\{ name: name } -> name == name') panel.todos
 
@@ -231,23 +230,10 @@ handleAction :: forall cs o m. MonadEffect m => Action -> H.HalogenM State Actio
 handleAction = case _ of
   Dragging todo -> H.modify_ \st -> st { transitioning = Just todo }
   DroppedOn panel -> H.modify_ \st ->
-    let maybePanels = do
-          todo <- st.transitioning
-          {init, panel: srcPanel, rest} <- splitPanelsByTodo todo st.panels
-          let srcPanel' = removeTodoFromPanel todo srcPanel
-              panels = init <> singleton srcPanel' <> rest
-              panels' = map (\panel' -> if panel.name == panel'.name
-                                        then panel' { todos = cons todo (panel'.todos) }
-                                        else panel')
-                            panels
-          Just panels'
-    in maybe st
-             (\panels -> st { transitioning = Nothing
-                            , panels = panels
-                            }
-             )
-             maybePanels
+    ""
   PreventDefault e next -> do
+    let _ =  trace "test" (\_-> "some string")
+
     H.liftEffect $ preventDefault e
     handleAction next
 
