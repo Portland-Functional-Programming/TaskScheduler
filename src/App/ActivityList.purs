@@ -24,6 +24,21 @@ derive instance eqPriority :: Eq Priority
 data Tag = Tag String
 derive instance eqTag :: Eq Tag
 
+data Panel = ActivityInventoryList
+           | TodoToday
+           | Current
+
+instance showPanel :: Show Panel where
+  show ActivityInventoryList = "Activity Inventory List"
+  show TodoToday = "Todo Today"
+  show Current = "Current"
+
+derive instance eqPanel :: Eq Panel
+derive instance ordPanel :: Ord Panel
+
+allPanels :: Array Panel
+allPanels = [ActivityInventoryList, TodoToday, Current]
+
 type Todo =
   { name :: String
   , priority :: Priority
@@ -35,44 +50,26 @@ type TodoNow =
   { todos :: Maybe (Array Todo)
   } 
 
-type ActivityInventoryList =
-  { todos :: Maybe (Array Todo)
-  }
-
-type Panel =
-  { name :: String
-  }
-
 initialTodos :: Array Todo
 initialTodos = [ { name : "Finish planning"
                  , priority : High
                  , tags: [Tag "work", Tag "home"]
-                 , associatedPanel : head initialPanels
+                 , associatedPanel : Just ActivityInventoryList
                  }
                , { name : "next"
                  , priority : Medium
                  , tags : [Tag "work"]
-                 , associatedPanel : head initialPanels
+                 , associatedPanel : Just TodoToday
                  }
                , { name : "trivial task"
                  , priority : Medium
                  , tags : [Tag "home"]
-                 , associatedPanel : head initialPanels
+                 , associatedPanel : Just TodoToday
                  }
                ]
 
-initialPanels :: Array Panel
-initialPanels = [ { name: "Activity Inventory List"
-                  }
-                , { name: "Todo Today"
-                  }
-                , { name: "Currently doing"
-                  }
-                ]
-
 type State =
-    { panels :: Array Panel
-    , todos :: Array Todo
+    { todos :: Array Todo
     , todoNow :: Maybe TodoNow
     , selectedTodo :: Maybe Todo
     , transitioning :: Maybe Todo
@@ -90,8 +87,7 @@ data Action = Dragging Todo
 component :: forall q i o m. MonadEffect m => H.Component q i o m
 component =
   H.mkComponent
-    { initialState: \_ -> { panels: initialPanels
-                          , todos: initialTodos
+    { initialState: \_ -> { todos: initialTodos
                           , todoNow: Nothing
                           , selectedTodo: Nothing
                           , transitioning: Nothing
@@ -130,11 +126,11 @@ panelsView state =
         HH.div [ Prop.id "Todo"]
           [
             HH.div [ Prop.class_ (ClassName "container")]
-            (uncurry panelsListView <$> toUnfoldable (allPanels `unionWith append` panelsWithTodos))
+            (uncurry panelsListView <$> toUnfoldable (allPanels' `unionWith append` panelsWithTodos))
           ]
       ]
     ]
-  where allPanels = fromFoldable (flip Tuple [] <$> state.panels)
+  where allPanels' = fromFoldable (flip Tuple [] <$> allPanels)
         panelsWithTodos = fromArrayOn _.associatedPanel state.todos
 
 panelsListView :: forall cs. Panel -> Array Todo -> HH.HTML cs Action
@@ -143,7 +139,7 @@ panelsListView panel todos =
          , HE.onDragOver (\de -> PreventDefault (DE.toEvent de) Noop)
          , HE.onDrop (\de -> PreventDefault (DE.toEvent de) (DroppedOn panel))
          ]
-         [ HH.h1_ [ HH.text panel.name ]
+         [ HH.h1_ [ HH.text (show panel) ]
          , listView todos
          ]
 
