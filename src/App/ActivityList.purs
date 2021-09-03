@@ -43,7 +43,7 @@ type Todo =
   { name :: String
   , priority :: Priority
   , tags :: Array Tag
-  , associatedPanel :: Maybe Panel
+  , associatedPanel :: Panel
   }
 
 type TodoNow =
@@ -54,17 +54,17 @@ initialTodos :: Array Todo
 initialTodos = [ { name : "Finish planning"
                  , priority : High
                  , tags: [Tag "work", Tag "home"]
-                 , associatedPanel : Just ActivityInventoryList
+                 , associatedPanel : ActivityInventoryList
                  }
                , { name : "next"
                  , priority : Medium
                  , tags : [Tag "work"]
-                 , associatedPanel : Just TodoToday
+                 , associatedPanel : TodoToday
                  }
                , { name : "trivial task"
                  , priority : Medium
                  , tags : [Tag "home"]
-                 , associatedPanel : Just TodoToday
+                 , associatedPanel : TodoToday
                  }
                ]
 
@@ -114,8 +114,9 @@ sidebarView state =
       ]
     ]
 
-fromArrayOn :: forall k v. Ord k => (v -> Maybe k) -> Array v -> Map k (Array v)
-fromArrayOn vk todos = fromFoldableWith append $ mapMaybe (\v -> flip Tuple [v] <$> vk v) todos
+fromArrayOn :: forall k v. Ord k => (v -> k) -> Array v -> Map k (Array v)
+--fromArrayOn :: (Todo -> Panel) -> Array Todo -> Map Panel (Array Todo)
+fromArrayOn vk todos = fromFoldableWith append $ map (\v -> Tuple (vk v) [v]) todos
 
 panelsView :: forall cs. State -> HH.HTML cs Action
 panelsView state =
@@ -234,7 +235,7 @@ handleAction = case _ of
     let maybeTodos = do
           todo <- st.transitioning
           {init, todo: draggedTodo, rest} <- splitTodosByName todo st.todos
-          let draggedTodo' = draggedTodo { associatedPanel = Just panel }
+          let draggedTodo' = draggedTodo { associatedPanel = panel }
               todos' = init <> singleton draggedTodo' <> rest
           Just todos'
     in maybe st
