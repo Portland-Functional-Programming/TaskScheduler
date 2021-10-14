@@ -2,7 +2,7 @@ module App.ActivityList where
 
 import Prelude
 
-import Data.Array (head, mapMaybe, singleton, span, tail)
+import Data.Array (head, mapMaybe, singleton, span, tail, findIndex, modifyAt)
 import Data.Map (Map, fromFoldable, fromFoldableWith, toUnfoldable, unionWith)
 import Data.Maybe (Maybe(..), fromMaybe, maybe, isJust)
 import Data.Tuple (Tuple(..), uncurry)
@@ -144,7 +144,6 @@ panelsListView panel todos =
          , listView todos
          ]
 
-
 listView :: forall cs. Array Todo -> HH.HTML cs Action
 listView todos =
   HH.div [ Prop.class_ (ClassName "itemContainer")] (map todoView todos)
@@ -158,6 +157,7 @@ todoView todo =
     [ Prop.class_ $ ClassName "item"
     , Prop.attr (AttrName "style")  $ "background-color: " <> priorityToColor todo.priority
     , Prop.attr (AttrName "draggable") "true"
+    , HE.onDrag (\de -> PreventDefault (DE.toEvent de) (Dragging todo))
     ] [ HH.text  todo.name
       , HH.button [ Prop.classes [ClassName "button", ClassName "is-primary"]
                   ]
@@ -232,18 +232,17 @@ handleAction :: forall cs o m. MonadEffect m => Action -> H.HalogenM State Actio
 handleAction = case _ of
   Dragging todo -> H.modify_ \st -> st { transitioning = Just todo }
   DroppedOn panel -> H.modify_ \st ->
-    let maybeTodos = do
-          todo <- st.transitioning
-          {init, todo: draggedTodo, rest} <- splitTodosByName todo st.todos
-          let draggedTodo' = draggedTodo { associatedPanel = panel }
-              todos' = init <> singleton draggedTodo' <> rest
-          Just todos'
-    in maybe st
-             (\todos -> st { transitioning = Nothing
-                            , todos = todos
-                            }
-             )
-             maybeTodos
+    let
+      maybeTodos = do
+        todo <- st.transitioning
+        index <- findIndex (\t -> t.name == todo.name) st.todos
+        todos <- modifyAt index (\todo -> todo { associatedPanel = panel }) st.todos
+        Just todos
+
+      f :: Array Todo -> State
+      f todos' = st { todos = todos', showTagModal = true }
+    in maybe st f maybeTodos
+
   PreventDefault e next -> do
     H.liftEffect $ preventDefault e
     handleAction next
