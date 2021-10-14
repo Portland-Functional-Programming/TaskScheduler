@@ -6,9 +6,10 @@
   , "effect"
   , "halogen"
   , "maybe"
+  , "ordered-collections"
   , "prelude"
   , "psci-support"
-  , "unsafe-coerce"
+  , "tuples"
   , "web-events"
   , "web-html"
   ]
