@@ -160,6 +160,7 @@ todoView todo =
     , HE.onDrag (\de -> PreventDefault (DE.toEvent de) (Dragging todo))
     ] [ HH.text  todo.name
       , HH.button [ Prop.classes [ClassName "button", ClassName "is-primary"]
+                  , HE.onClick (\_ -> OpenAddTagModal todo)
                   ]
                   [ HH.text "Add Tag"]
       ]
