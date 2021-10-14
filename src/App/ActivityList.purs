@@ -240,7 +240,7 @@ handleAction = case _ of
         Just todos
 
       f :: Array Todo -> State
-      f todos' = st { todos = todos', showTagModal = true }
+      f todos' = st { todos = todos' }
     in maybe st f maybeTodos
 
   PreventDefault e next -> do
