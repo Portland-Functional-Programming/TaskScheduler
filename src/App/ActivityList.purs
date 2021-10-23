@@ -81,6 +81,7 @@ data Action = Dragging Todo
             | DroppedOn Panel
             | PreventDefault Event Action
             | OpenAddTagModal Todo
+            | CloseTagModal
             | SaveTag Todo Tag
             | Noop
 
@@ -196,9 +197,11 @@ modalCard state content =
             [content]
           , HH.footer
             [Prop.class_ $ ClassName "modal-card-foot"]
-            [HH.button [ Prop.classes [ClassName "button", ClassName "is-success"]
-                       ]
-                       [HH.text "Save Tag"]
+            [ HH.button [ Prop.classes [ClassName "button", ClassName "is-failure"]
+                        , HE.onClick (\_ -> CloseTagModal)]
+              [HH.text "Cancel"]
+            , HH.button [ Prop.classes [ClassName "button", ClassName "is-success"]]
+              [HH.text "Save Tag"]
             ]
           ]
         ]
@@ -249,5 +252,6 @@ handleAction = case _ of
     handleAction next
 
   OpenAddTagModal todo -> H.modify_ \st -> st { modalTarget = Just todo }
+  CloseTagModal -> H.modify_ \st -> st { modalTarget = Nothing }
   SaveTag _ _ -> H.modify_ \st -> st { modalTarget = Nothing }
   Noop -> pure unit
