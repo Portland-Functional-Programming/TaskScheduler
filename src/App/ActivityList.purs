@@ -2,9 +2,9 @@ module App.ActivityList where
 
 import Prelude
 
-import Data.Array (head, mapMaybe, singleton, span, tail, findIndex, modifyAt)
+import Data.Array (head, mapMaybe, singleton, span, tail, findIndex, modifyAt, cons)
 import Data.Map (Map, fromFoldable, fromFoldableWith, toUnfoldable, unionWith)
-import Data.Maybe (Maybe(..), fromMaybe, maybe, isJust)
+import Data.Maybe (Maybe(..), fromMaybe, fromJust, maybe, isJust)
 import Data.Tuple (Tuple(..), uncurry)
 import Effect.Class (class MonadEffect)
 import Halogen (AttrName(..), ClassName(..))
@@ -12,6 +12,7 @@ import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as Prop
+import Partial.Unsafe (unsafePartial) -- Shame!
 import Web.Event.Event (Event, preventDefault)
 import Web.HTML.Event.DragEvent as DE
 
@@ -75,6 +76,7 @@ type State =
     , transitioning :: Maybe Todo
     , modalTarget :: Maybe Todo
     , showTagModal :: Boolean
+    , tagText :: String
     }
 
 data Action = Dragging Todo
@@ -83,6 +85,7 @@ data Action = Dragging Todo
             | OpenAddTagModal Todo
             | CloseTagModal
             | SaveTag Todo Tag
+            | TagTextAdded String
             | Noop
 
 component :: forall q i o m. MonadEffect m => H.Component q i o m
@@ -94,6 +97,7 @@ component =
                           , transitioning: Nothing
                           , showTagModal: false
                           , modalTarget: Nothing
+                          , tagText: ""
                           }
     , render
     , eval: H.mkEval $ H.defaultEval { handleAction = handleAction }
@@ -159,22 +163,25 @@ todoView todo =
     , Prop.attr (AttrName "style")  $ "background-color: " <> priorityToColor todo.priority
     , Prop.attr (AttrName "draggable") "true"
     , HE.onDrag (\de -> PreventDefault (DE.toEvent de) (Dragging todo))
-    ] [ HH.text  todo.name
+    ] [ HH.text todo.name
+      , tagsView todo.tags
       , HH.button [ Prop.classes [ClassName "button", ClassName "is-primary"]
                   , HE.onClick (\_ -> OpenAddTagModal todo)
                   ]
                   [ HH.text "Add Tag"]
       ]
 
-tagForm :: forall cs. HH.HTML cs Action
-tagForm =
+tagForm :: forall cs. State -> HH.HTML cs Action
+tagForm state =
   HH.form_ [ HH.div
              [Prop.class_ $ ClassName "field"]
              [ HH.label [Prop.class_ $ ClassName "label"] [HH.text "Name"]
              , HH.div [Prop.class_ $ ClassName "control"]
-               [ HH.input [ Prop.class_ $ ClassName "input"
+               [ HH.input [ Prop.value state.tagText
+                          , Prop.class_ $ ClassName "input"
                           , Prop.type_ Prop.InputText
-                          , Prop.placeholder "Enter a tag name"]
+                          , Prop.placeholder "Enter a tag name"
+                          , HE.onValueInput TagTextAdded]
                ]
              ]
            ]
@@ -200,14 +207,18 @@ modalCard state content =
             [ HH.button [ Prop.classes [ClassName "button", ClassName "is-failure"]
                         , HE.onClick (\_ -> CloseTagModal)]
               [HH.text "Cancel"]
-            , HH.button [ Prop.classes [ClassName "button", ClassName "is-success"]]
+            , HH.button [ Prop.classes [ClassName "button", ClassName "is-success"]
+                        , HE.onClick (\_ -> let todo = unsafePartial (fromJust state.modalTarget)
+                                                txt = state.tagText
+                                            in (SaveTag todo (Tag txt)))
+                        ]
               [HH.text "Save Tag"]
             ]
           ]
         ]
 
 modalView :: forall cs. State -> HH.HTML cs Action
-modalView state = modalCard state tagForm
+modalView state = modalCard state (tagForm state)
 
 -- Helper
 priorityToColor :: Priority -> String
@@ -240,7 +251,7 @@ handleAction = case _ of
       maybeTodos = do
         todo <- st.transitioning
         index <- findIndex (\t -> t.name == todo.name) st.todos
-        todos <- modifyAt index (\todo -> todo { associatedPanel = panel }) st.todos
+        todos <- modifyAt index (\todo' -> todo' { associatedPanel = panel }) st.todos
         Just todos
 
       f :: Array Todo -> State
@@ -253,5 +264,18 @@ handleAction = case _ of
 
   OpenAddTagModal todo -> H.modify_ \st -> st { modalTarget = Just todo }
   CloseTagModal -> H.modify_ \st -> st { modalTarget = Nothing }
-  SaveTag _ _ -> H.modify_ \st -> st { modalTarget = Nothing }
+  SaveTag todo tag -> H.modify_ \st -> let
+    maybeTodos = do
+      index <- findIndex (\t -> t.name == todo.name) st.todos
+      modifyAt index (\todo -> todo { tags = cons tag todo.tags }) st.todos
+
+    f :: Array Todo -> State
+    f todos' = st { todos = todos'
+                  , modalTarget = Nothing
+                  , tagText = ""
+                  }
+    in maybe st f maybeTodos
+
+  TagTextAdded txt -> H.modify_ \st -> st { tagText = txt }
+
   Noop -> pure unit
