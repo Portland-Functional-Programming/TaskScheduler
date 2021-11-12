@@ -13,6 +13,8 @@ import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as Prop
 import Partial.Unsafe (unsafePartial) -- Shame!
+import Type.Proxy (Proxy(..))
+import App.Component.AddTodoDialog (addTodoDialog)
 import Web.Event.Event (Event, preventDefault)
 import Web.HTML.Event.DragEvent as DE
 
@@ -76,6 +78,7 @@ type State =
     , transitioning :: Maybe Todo
     , modalTarget :: Maybe Todo
     , showTagModal :: Boolean
+    , showAddTodoModal :: Boolean
     , tagText :: String
     }
 
@@ -83,6 +86,7 @@ data Action = Dragging Todo
             | DroppedOn Panel
             | PreventDefault Event Action
             | OpenAddTagModal Todo
+            | OpenAddTodoModal
             | CloseTagModal
             | SaveTag Todo Tag
             | TagTextAdded String
@@ -96,6 +100,7 @@ component =
                           , selectedTodo: Nothing
                           , transitioning: Nothing
                           , showTagModal: false
+                          , showAddTodoModal: false
                           , modalTarget: Nothing
                           , tagText: ""
                           }
@@ -103,7 +108,7 @@ component =
     , eval: H.mkEval $ H.defaultEval { handleAction = handleAction }
     }
 
-sidebarView :: forall cs m. State -> HH.HTML cs m
+sidebarView :: forall cs. State -> HH.HTML cs Action
 sidebarView state =
   HH.aside [ Prop.classes [ClassName "column", ClassName "sidebar", ClassName "is-narrow"]]
     [
@@ -113,7 +118,12 @@ sidebarView state =
           [
             HH.ul [ Prop.class_ (ClassName "menu-list")]
               [
-                HH.li [] [ HH.text "test"]
+                HH.li [] [ HH.button
+                           [ Prop.classes [ClassName "button", ClassName "is-primary"]
+                           , HE.onClick (\_ -> OpenAddTodoModal)
+                           ]
+                           [HH.text "Add New Todo"]
+                         ]
               ]
           ]
       ]
@@ -228,12 +238,19 @@ priorityToColor priority =
     Medium -> "#f5f588"
     Low -> "#469dd0"
 
+type Slots = ( addTodoDialog :: forall query input. H.Slot query Void input )
+
+_addTodoDialog = Proxy :: Proxy "addTodoDialog"
+
 render :: forall slots m. State -> H.ComponentHTML Action slots m
 render state =
   HH.div [ Prop.class_ (ClassName "columns")]
     [ sidebarView state
     , panelsView state
     , modalView state
+    , if state.showAddTodoModal
+      then HH.div_ [ HH.slot_ _addTodoDialog 0 addTodoDialog ()]
+      else HH.div_ []
     ]
 
 splitTodosByName :: Todo -> Array Todo -> Maybe { init :: Array Todo, todo :: Todo, rest :: Array Todo }
@@ -263,6 +280,7 @@ handleAction = case _ of
     handleAction next
 
   OpenAddTagModal todo -> H.modify_ \st -> st { modalTarget = Just todo }
+  OpenAddTodoModal -> H.modify_ \st -> st { showAddTodoModal = true }
   CloseTagModal -> H.modify_ \st -> st { modalTarget = Nothing }
   SaveTag todo tag -> H.modify_ \st -> let
     maybeTodos = do
