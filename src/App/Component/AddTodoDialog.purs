@@ -6,6 +6,7 @@ import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 
+addTodoDialog :: forall query output m. H.Component query Int output m
 addTodoDialog =
   H.mkComponent
     { initialState
@@ -17,7 +18,7 @@ addTodoDialog =
 
   render state =
     HH.div_
-      [ HH.button [] [ HH.text "-" ]
+      [ HH.button [] [ HH.text "Portland!" ]
       , HH.text (show state)
       , HH.button [] [ HH.text "+" ]
       ]

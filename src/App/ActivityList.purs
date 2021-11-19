@@ -238,20 +238,31 @@ priorityToColor priority =
     Medium -> "#f5f588"
     Low -> "#469dd0"
 
-type Slots = ( addTodoDialog :: forall query input. H.Slot query Void input )
+type Slots = ( addTodoDialog :: forall query . H.Slot query Void Int )
 
 _addTodoDialog = Proxy :: Proxy "addTodoDialog"
 
-render :: forall slots m. State -> H.ComponentHTML Action slots m
+render :: forall m. State -> H.ComponentHTML Action Slots m
 render state =
   HH.div [ Prop.class_ (ClassName "columns")]
     [ sidebarView state
     , panelsView state
     , modalView state
     , if state.showAddTodoModal
-      then HH.div_ [ HH.slot_ _addTodoDialog 0 addTodoDialog ()]
+      then HH.div_ [ HH.slot_ _addTodoDialog 0 addTodoDialog 0]
       else HH.div_ []
     ]
+
+-- slot_
+--   :: forall query action input output slots m label slot _1
+--    . Row.Cons label (Slot query output slot) _1 slots
+--   => IsSymbol label
+--   => Ord slot
+--   => Proxy label
+--   -> slot
+--   -> Component query input output m
+--   -> input
+--   -> ComponentHTML action slots m  
 
 splitTodosByName :: Todo -> Array Todo -> Maybe { init :: Array Todo, todo :: Todo, rest :: Array Todo }
 splitTodosByName todo todos =
