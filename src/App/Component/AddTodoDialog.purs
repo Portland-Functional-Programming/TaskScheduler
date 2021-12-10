@@ -49,9 +49,10 @@ addTodoDialog =
             ]
           , HH.footer
             [Prop.class_ $ ClassName "modal-card-foot"]
-            [ HH.button [ Prop.classes [ClassName "button", ClassName "is-failure"]
-                        -- , HE.onClick (\_ -> CloseTagModal)
-                        ]
+            [ HH.button
+              [ Prop.classes [ClassName "button", ClassName "is-failure"]
+              , HE.onClick (\_ -> CancelClicked)
+              ]
               [HH.text "Cancel"]
             , HH.button [ Prop.classes [ClassName "button", ClassName "is-success"]
                         -- , HE.onClick (\_ -> let todo = unsafePartial (fromJust state.modalTarget)

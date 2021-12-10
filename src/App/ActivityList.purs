@@ -91,6 +91,7 @@ data Action = Dragging Todo
             | CloseTagModal
             | SaveTag Todo Tag
             | TagTextAdded String
+            | HandleAddTodo AddTodoDialog.Output
             | Noop
 
 component :: forall q i o m. MonadEffect m => H.Component q i o m
@@ -250,7 +251,7 @@ render state =
     , panelsView state
     , modalView state
     , if state.showAddTodoModal
-      then HH.div_ [ HH.slot_ _addTodoDialog 0 addTodoDialog 0]
+      then HH.div_ [ HH.slot _addTodoDialog 0 addTodoDialog 0 HandleAddTodo ]
       else HH.div_ []
     ]
 
@@ -272,7 +273,7 @@ splitTodosByName todo todos =
       rest' = fromMaybe [] (tail rest)
   in (\t -> {init, todo: t, rest: rest'}) <$> maybeTodo
 
-handleAction :: forall cs o m. MonadEffect m => Action -> H.HalogenM State Action cs o m Unit
+handleAction :: forall o m. MonadEffect m => Action -> H.HalogenM State Action Slots o m Unit
 handleAction = case _ of
   Dragging todo -> H.modify_ \st -> st { transitioning = Just todo }
   DroppedOn panel -> H.modify_ \st ->
@@ -307,5 +308,8 @@ handleAction = case _ of
     in maybe st f maybeTodos
 
   TagTextAdded txt -> H.modify_ \st -> st { tagText = txt }
+
+  HandleAddTodo AddTodoDialog.Canceled ->
+    H.modify_ \st -> st { showAddTodoModal = false }
 
   Noop -> pure unit
