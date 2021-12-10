@@ -7,6 +7,7 @@
   , "halogen"
   , "maybe"
   , "ordered-collections"
+  , "partial"
   , "prelude"
   , "psci-support"
   , "tuples"
