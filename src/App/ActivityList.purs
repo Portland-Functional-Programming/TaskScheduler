@@ -15,6 +15,7 @@ import Halogen.HTML.Properties as Prop
 import Partial.Unsafe (unsafePartial) -- Shame!
 import Type.Proxy (Proxy(..))
 import App.Component.AddTodoDialog (addTodoDialog)
+import App.Component.AddTodoDialog as AddTodoDialog
 import Web.Event.Event (Event, preventDefault)
 import Web.HTML.Event.DragEvent as DE
 
@@ -238,7 +239,7 @@ priorityToColor priority =
     Medium -> "#f5f588"
     Low -> "#469dd0"
 
-type Slots = ( addTodoDialog :: forall query . H.Slot query Void Int )
+type Slots = ( addTodoDialog :: forall query . H.Slot query AddTodoDialog.Output Int )
 
 _addTodoDialog = Proxy :: Proxy "addTodoDialog"
 

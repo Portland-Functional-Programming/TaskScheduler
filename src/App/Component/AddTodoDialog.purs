@@ -8,12 +8,16 @@ import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as Prop
 import Halogen (AttrName(..), ClassName(..))
 
-addTodoDialog :: forall query output m. H.Component query Int output m
+data Output = Canceled
+
+data Action = CancelClicked
+
+addTodoDialog :: forall query output m. H.Component query Int Output m
 addTodoDialog =
   H.mkComponent
     { initialState
     , render
-    , eval: H.mkEval H.defaultEval -- { handleAction = handleAction }
+    , eval: H.mkEval H.defaultEval { handleAction = handleAction }
     }
   where
   initialState _ = 0
@@ -26,7 +30,7 @@ addTodoDialog =
         , HH.div [Prop.class_ $ ClassName "modal-card"]
           [ HH.header
             [Prop.class_ $ ClassName "modal-card-head"]
-            [HH.p [Prop.class_ $ ClassName "modal-card"] [HH.text "Enter a tag"]]
+            [HH.p [Prop.class_ $ ClassName "modal-card"] [HH.text "Create A Todo"]]
           , HH.section
             [Prop.class_ $ ClassName "modal-card-body"]
             [ HH.form_ [ HH.div
@@ -36,7 +40,7 @@ addTodoDialog =
                            [ HH.input [ Prop.value ""
                                       , Prop.class_ $ ClassName "input"
                                       , Prop.type_ Prop.InputText
-                                      , Prop.placeholder "Enter a tag name"
+                                      , Prop.placeholder "Enter todo name"
                                       --, HE.onValueInput TagTextAdded
                                       ]
                            ]
@@ -54,14 +58,10 @@ addTodoDialog =
                         --                         txt = state.tagText
                         --                     in (SaveTag todo (Tag txt)))
                         ]
-              [HH.text "Save Tag"]
+              [HH.text "Save Todo"]
             ]
           ]
         ]
 
-  -- handleAction = case _ of
-  --   Decrement ->
-  --     H.modify_ \state -> state - 1
-
-  --   Increment ->
-  --     H.modify_ \state -> state + 1
+  handleAction = case _ of
+    CancelClicked -> H.raise Canceled 
