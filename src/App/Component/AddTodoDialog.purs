@@ -2,15 +2,23 @@ module App.Component.AddTodoDialog where
 
 import Prelude
 
+import Control.Monad.State.Class (get)
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as Prop
 import Halogen (AttrName(..), ClassName(..))
+import TaskScheduler.Domain.Task (Task, Priority(Medium))
+import TaskScheduler.Domain.Panel (Panel(ActivityInventoryList))
 
 data Output = Canceled
+            | TaskCreated Task
 
-data Action = CancelClicked
+data Action = TaskNameAdded String
+            | CancelClicked
+            | SaveClicked
+
+data State = String
 
 addTodoDialog :: forall query output m. H.Component query Int Output m
 addTodoDialog =
@@ -20,7 +28,7 @@ addTodoDialog =
     , eval: H.mkEval H.defaultEval { handleAction = handleAction }
     }
   where
-  initialState _ = 0
+  initialState _ = ""
 
   render state =
     HH.div
@@ -30,7 +38,7 @@ addTodoDialog =
         , HH.div [Prop.class_ $ ClassName "modal-card"]
           [ HH.header
             [Prop.class_ $ ClassName "modal-card-head"]
-            [HH.p [Prop.class_ $ ClassName "modal-card"] [HH.text "Create A Todo"]]
+            [HH.p [Prop.class_ $ ClassName "modal-card"] [HH.text "Create A Task"]]
           , HH.section
             [Prop.class_ $ ClassName "modal-card-body"]
             [ HH.form_ [ HH.div
@@ -41,7 +49,7 @@ addTodoDialog =
                                       , Prop.class_ $ ClassName "input"
                                       , Prop.type_ Prop.InputText
                                       , Prop.placeholder "Enter todo name"
-                                      --, HE.onValueInput TagTextAdded
+                                      , HE.onValueInput TaskNameAdded
                                       ]
                            ]
                          ]
@@ -55,14 +63,20 @@ addTodoDialog =
               ]
               [HH.text "Cancel"]
             , HH.button [ Prop.classes [ClassName "button", ClassName "is-success"]
-                        -- , HE.onClick (\_ -> let todo = unsafePartial (fromJust state.modalTarget)
-                        --                         txt = state.tagText
-                        --                     in (SaveTag todo (Tag txt)))
+                        , HE.onClick (\_ -> SaveClicked)
                         ]
-              [HH.text "Save Todo"]
+              [HH.text "Save Task"]
             ]
           ]
         ]
 
   handleAction = case _ of
-    CancelClicked -> H.raise Canceled 
+    TaskNameAdded name -> H.put name
+    CancelClicked -> H.raise Canceled
+    SaveClicked -> do
+      name <- get
+      H.raise $ TaskCreated { name: name
+                            , priority: Medium
+                            , tags: []
+                            , associatedPanel: ActivityInventoryList
+                            }
