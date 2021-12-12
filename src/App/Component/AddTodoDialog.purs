@@ -14,7 +14,7 @@ import TaskScheduler.Domain.Panel (Panel(ActivityInventoryList))
 data Output = Canceled
             | TaskCreated Task
 
-data Action = TaskNameAdded String
+data Action = TaskTitleAdded String
             | CancelClicked
             | SaveClicked
 
@@ -43,13 +43,13 @@ addTodoDialog =
             [Prop.class_ $ ClassName "modal-card-body"]
             [ HH.form_ [ HH.div
                          [Prop.class_ $ ClassName "field"]
-                         [ HH.label [Prop.class_ $ ClassName "label"] [HH.text "Name"]
+                         [ HH.label [Prop.class_ $ ClassName "label"] [HH.text "Title"]
                          , HH.div [Prop.class_ $ ClassName "control"]
                            [ HH.input [ Prop.value ""
                                       , Prop.class_ $ ClassName "input"
                                       , Prop.type_ Prop.InputText
-                                      , Prop.placeholder "Enter todo name"
-                                      , HE.onValueInput TaskNameAdded
+                                      , Prop.placeholder "Enter task title"
+                                      , HE.onValueInput TaskTitleAdded
                                       ]
                            ]
                          ]
@@ -71,11 +71,11 @@ addTodoDialog =
         ]
 
   handleAction = case _ of
-    TaskNameAdded name -> H.put name
+    TaskTitleAdded title -> H.put title
     CancelClicked -> H.raise Canceled
     SaveClicked -> do
-      name <- get
-      H.raise $ TaskCreated { name: name
+      title <- get
+      H.raise $ TaskCreated { title: title
                             , priority: Medium
                             , tags: []
                             , associatedPanel: ActivityInventoryList

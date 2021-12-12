@@ -5,7 +5,7 @@ import Prelude
 import TaskScheduler.Domain.Panel (Panel)
 
 type Task =
-  { name :: String
+  { title :: String
   , priority :: Priority
   , tags :: Array Tag
   , associatedPanel :: Panel
