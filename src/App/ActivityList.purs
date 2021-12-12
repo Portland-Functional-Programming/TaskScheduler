@@ -29,17 +29,17 @@ type TodoNow =
   } 
 
 initialTodos :: Array Task
-initialTodos = [ { name : "Finish planning"
+initialTodos = [ { title : "Finish planning"
                  , priority : High
                  , tags: [Tag "work", Tag "home"]
                  , associatedPanel : ActivityInventoryList
                  }
-               , { name : "next"
+               , { title : "next"
                  , priority : Medium
                  , tags : [Tag "work"]
                  , associatedPanel : TodoToday
                  }
-               , { name : "trivial task"
+               , { title : "trivial task"
                  , priority : Medium
                  , tags : [Tag "home"]
                  , associatedPanel : TodoToday
@@ -149,7 +149,7 @@ todoView task =
     , Prop.attr (AttrName "style")  $ "background-color: " <> priorityToColor task.priority
     , Prop.attr (AttrName "draggable") "true"
     , HE.onDrag (\de -> PreventDefault (DE.toEvent de) (Dragging task))
-    ] [ HH.text task.name
+    ] [ HH.text task.title
       , tagsView task.tags
       , HH.button [ Prop.classes [ClassName "button", ClassName "is-primary"]
                   , HE.onClick (\_ -> OpenAddTagModal task)
@@ -240,9 +240,9 @@ render state =
 --   -> input
 --   -> ComponentHTML action slots m  
 
-splitTodosByName :: Task -> Array Task -> Maybe { init :: Array Task, task :: Task, rest :: Array Task }
-splitTodosByName task tasks =
-  let { init: init, rest: rest } = span (\t -> t.name == task.name) tasks
+splitTodosByTitle :: Task -> Array Task -> Maybe { init :: Array Task, task :: Task, rest :: Array Task }
+splitTodosByTitle task tasks =
+  let { init: init, rest: rest } = span (\t -> t.title == task.title) tasks
       maybeTask = head rest
       rest' = fromMaybe [] (tail rest)
   in (\t -> {init, task: t, rest: rest'}) <$> maybeTask
@@ -254,7 +254,7 @@ handleAction = case _ of
     let
       maybeTasks = do
         task <- st.transitioning
-        index <- findIndex (\t -> t.name == task.name) st.tasks
+        index <- findIndex (\t -> t.title == task.title) st.tasks
         tasks <- modifyAt index (\task' -> task' { associatedPanel = panel }) st.tasks
         Just tasks
 
@@ -271,7 +271,7 @@ handleAction = case _ of
   CloseTagModal -> H.modify_ \st -> st { modalTarget = Nothing }
   SaveTag task tag -> H.modify_ \st -> let
     maybeTasks = do
-      index <- findIndex (\t -> t.name == task.name) st.tasks
+      index <- findIndex (\t -> t.title == task.title) st.tasks
       modifyAt index (\task -> task { tags = cons tag task.tags }) st.tasks
 
     f :: Array Task -> State
