@@ -2,7 +2,7 @@ module App.ActivityList where
 
 import Prelude
 
-import Data.Array (head, mapMaybe, singleton, span, tail, findIndex, modifyAt, cons)
+import Data.Array (head, span, tail, findIndex, modifyAt, cons)
 import Data.Map (Map, fromFoldable, fromFoldableWith, toUnfoldable, unionWith)
 import Data.Maybe (Maybe(..), fromMaybe, fromJust, maybe, isJust)
 import Data.Tuple (Tuple(..), uncurry)
@@ -85,7 +85,7 @@ component =
     }
 
 sidebarView :: forall cs. State -> HH.HTML cs Action
-sidebarView state =
+sidebarView _ =
   HH.aside [ Prop.classes [ClassName "column", ClassName "sidebar", ClassName "is-narrow"]]
     [
       HH.section [ Prop.class_ (ClassName "section")]
@@ -272,7 +272,7 @@ handleAction = case _ of
   SaveTag task tag -> H.modify_ \st -> let
     maybeTasks = do
       index <- findIndex (\t -> t.title == task.title) st.tasks
-      modifyAt index (\task -> task { tags = cons tag task.tags }) st.tasks
+      modifyAt index (\task' -> task' { tags = cons tag task'.tags }) st.tasks
 
     f :: Array Task -> State
     f tasks' = st { tasks = tasks'

@@ -21,7 +21,7 @@ data Action = TaskTitleAdded String
 
 data State = String
 
-addTodoDialog :: forall query output m. H.Component query Int Output m
+addTodoDialog :: forall query m. H.Component query Int Output m
 addTodoDialog =
   H.mkComponent
     { initialState
