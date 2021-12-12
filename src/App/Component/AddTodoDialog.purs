@@ -3,6 +3,7 @@ module App.Component.AddTodoDialog where
 import Prelude
 
 import Control.Monad.State.Class (get)
+import Data.String (null)
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
@@ -75,8 +76,10 @@ addTodoDialog =
     CancelClicked -> H.raise Canceled
     SaveClicked -> do
       title <- get
-      H.raise $ TaskCreated { title: title
-                            , priority: Medium
-                            , tags: []
-                            , associatedPanel: ActivityInventoryList
-                            }
+      if (not <<< null $ title)
+        then H.raise $ TaskCreated { title: title
+                                   , priority: Medium
+                                   , tags: []
+                                   , associatedPanel: ActivityInventoryList
+                                   }
+        else pure unit
