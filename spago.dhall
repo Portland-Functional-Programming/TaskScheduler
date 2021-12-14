@@ -10,6 +10,8 @@
   , "partial"
   , "prelude"
   , "psci-support"
+  , "strings"
+  , "transformers"
   , "tuples"
   , "web-events"
   , "web-html"
