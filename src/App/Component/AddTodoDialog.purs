@@ -3,23 +3,28 @@ module App.Component.AddTodoDialog where
 import Prelude
 
 import Control.Monad.State.Class (get)
-import Data.String (null)
+import Data.Maybe (Maybe(..), fromJust)
+import Data.String (null, toLower)
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as Prop
 import Halogen (AttrName(..), ClassName(..))
-import TaskScheduler.Domain.Task (Task, Priority(Medium))
+import Partial.Unsafe (unsafePartial) -- Shame!
+import TaskScheduler.Domain.Task --(Task, Priority(..))
 import TaskScheduler.Domain.Panel (Panel(ActivityInventoryList))
 
 data Output = Canceled
             | TaskCreated Task
 
 data Action = TaskTitleAdded String
+            | PrioritySelected Priority
             | CancelClicked
             | SaveClicked
 
-data State = String
+type State = { title :: String
+             , priority :: Priority
+             }
 
 addTodoDialog :: forall query m. H.Component query Int Output m
 addTodoDialog =
@@ -29,7 +34,7 @@ addTodoDialog =
     , eval: H.mkEval H.defaultEval { handleAction = handleAction }
     }
   where
-  initialState _ = ""
+  initialState _ = { title: "sample", priority: Medium }
 
   render state =
     HH.div
@@ -42,19 +47,35 @@ addTodoDialog =
             [HH.p [Prop.class_ $ ClassName "modal-card"] [HH.text "Create A Task"]]
           , HH.section
             [Prop.class_ $ ClassName "modal-card-body"]
-            [ HH.form_ [ HH.div
-                         [Prop.class_ $ ClassName "field"]
-                         [ HH.label [Prop.class_ $ ClassName "label"] [HH.text "Title"]
-                         , HH.div [Prop.class_ $ ClassName "control"]
-                           [ HH.input [ Prop.value ""
-                                      , Prop.class_ $ ClassName "input"
-                                      , Prop.type_ Prop.InputText
-                                      , Prop.placeholder "Enter task title"
-                                      , HE.onValueInput TaskTitleAdded
-                                      ]
-                           ]
-                         ]
-                       ]
+            [ HH.form_
+              [ -- Task title
+                HH.div
+                [Prop.class_ $ ClassName "field"]
+                [ HH.label [Prop.class_ $ ClassName "label"] [HH.text "Title"]
+                , HH.div [Prop.class_ $ ClassName "control"]
+                  [ HH.input [ Prop.value ""
+                             , Prop.class_ $ ClassName "input"
+                             , Prop.type_ Prop.InputText
+                             , Prop.placeholder "Enter task title"
+                             , HE.onValueInput TaskTitleAdded
+                             ]
+                  ]
+                ]
+
+                -- Task priority
+              , HH.div
+                [Prop.class_ $ ClassName "field"]
+                [ HH.label [Prop.class_ $ ClassName "label"] [HH.text "Priority"]
+                , HH.div [Prop.class_ $ ClassName "control"]
+                  [ HH.select
+                    [ HE.onValueChange (\s -> PrioritySelected $ unsafePartial $ fromJust $ priorityFromString s)]
+                    [ HH.option [Prop.value "low"] [HH.text "Low"]
+                    , HH.option [Prop.value "medium"] [HH.text "Medium"]
+                    , HH.option [Prop.value "high"] [HH.text "High"]
+                    ]
+                  ]
+                ]
+              ]
             ]
           , HH.footer
             [Prop.class_ $ ClassName "modal-card-foot"]
@@ -72,14 +93,22 @@ addTodoDialog =
         ]
 
   handleAction = case _ of
-    TaskTitleAdded title -> H.put title
+    TaskTitleAdded title -> H.modify_ \st -> st { title = title }
+    PrioritySelected priority -> H.modify_ \st -> st { priority = priority }
     CancelClicked -> H.raise Canceled
-    SaveClicked -> do
-      title <- get
-      if (not <<< null $ title)
-        then H.raise $ TaskCreated { title: title
-                                   , priority: Medium
+    SaveClicked -> do 
+      taskData <- get
+      if (not <<< null $ taskData.title)
+        then H.raise $ TaskCreated { title: taskData.title
+                                   , priority: taskData.priority
                                    , tags: []
                                    , associatedPanel: ActivityInventoryList
                                    }
         else pure unit
+
+priorityFromString :: String -> Maybe Priority
+priorityFromString s = case toLower s of
+  "low" -> Just Low
+  "medium" -> Just Medium
+  "high" -> Just High
+  _ -> Nothing

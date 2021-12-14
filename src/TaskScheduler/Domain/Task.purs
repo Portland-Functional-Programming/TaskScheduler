@@ -16,6 +16,10 @@ data Priority = High
               | Low
 
 derive instance eqPriority :: Eq Priority
+instance showPriority :: Show Priority where
+  show Low = "Low"
+  show Medium = "Medium"
+  show High = "High"
 
 data Tag = Tag String
 derive instance eqTag :: Eq Tag
