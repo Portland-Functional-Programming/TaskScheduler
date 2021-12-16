@@ -1,17 +1,17 @@
 module App.Component.AddTodoDialog where
 
-import Prelude (bind, not, pure, show, unit, ($), (<<<))
+import Prelude (bind, map, not, pure, show, unit, ($), (<<<), (>>>))
 
 import Control.Monad.State.Class (get)
 import Data.Maybe (Maybe(..), fromJust)
-import Data.String (null, toLower)
+import Data.String (null, toLower, split, trim, Pattern(..))
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as Prop
 import Halogen (ClassName(..))
 import Partial.Unsafe (unsafePartial) -- Shame!
-import TaskScheduler.Domain.Task (Task, Priority(..))
+import TaskScheduler.Domain.Task (Task, Priority(..), Tag(..))
 import TaskScheduler.Domain.Panel (Panel(ActivityInventoryList))
 
 data Output = Canceled
@@ -19,11 +19,13 @@ data Output = Canceled
 
 data Action = TaskTitleAdded String
             | PrioritySelected Priority
+            | TagsEntered String
             | CancelClicked
             | SaveClicked
 
 type State = { title :: String
              , priority :: Priority
+             , tags :: Array Tag
              }
 
 defaultPriority :: Priority
@@ -37,7 +39,10 @@ addTodoDialog =
     , eval: H.mkEval H.defaultEval { handleAction = handleAction }
     }
   where
-  initialState _ = { title: "sample", priority: defaultPriority }
+  initialState _ = { title: "sample"
+                   , priority: defaultPriority
+                   , tags: []
+                   }
 
   render _ =
     HH.div
@@ -77,6 +82,20 @@ addTodoDialog =
                     in [mkOption Low, mkOption Medium, mkOption High]
                   ]
                 ]
+
+                -- Tags
+              , HH.div
+                [Prop.class_ $ ClassName "field"]
+                [ HH.label [Prop.class_ $ ClassName "label"] [HH.text "Tags"]
+                , HH.div [Prop.class_ $ ClassName "control"]
+                  [ HH.input [ Prop.value ""
+                             , Prop.class_ $ ClassName "input"
+                             , Prop.type_ Prop.InputText
+                             , Prop.placeholder "Enter tags as comma-separated values"
+                             , HE.onValueInput TagsEntered
+                             ]
+                  ]
+                ]
               ]
             ]
           , HH.footer
@@ -97,13 +116,16 @@ addTodoDialog =
   handleAction = case _ of
     TaskTitleAdded title -> H.modify_ \st -> st { title = title }
     PrioritySelected priority -> H.modify_ \st -> st { priority = priority }
+    TagsEntered tagsString ->
+      let tags = split (Pattern ",") >>> map (trim >>> Tag) $ tagsString
+      in H.modify_ \st -> st { tags = tags }
     CancelClicked -> H.raise Canceled
     SaveClicked -> do 
       taskData <- get
       if (not <<< null $ taskData.title)
         then H.raise $ TaskCreated { title: taskData.title
                                    , priority: taskData.priority
-                                   , tags: []
+                                   , tags: taskData.tags
                                    , associatedPanel: ActivityInventoryList
                                    }
         else pure unit
