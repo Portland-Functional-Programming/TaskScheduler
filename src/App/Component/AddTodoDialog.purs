@@ -1,6 +1,6 @@
 module App.Component.AddTodoDialog where
 
-import Prelude
+import Prelude (bind, not, pure, show, unit, ($), (<<<))
 
 import Control.Monad.State.Class (get)
 import Data.Maybe (Maybe(..), fromJust)
@@ -9,9 +9,9 @@ import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as Prop
-import Halogen (AttrName(..), ClassName(..))
+import Halogen (ClassName(..))
 import Partial.Unsafe (unsafePartial) -- Shame!
-import TaskScheduler.Domain.Task --(Task, Priority(..))
+import TaskScheduler.Domain.Task (Task, Priority(..))
 import TaskScheduler.Domain.Panel (Panel(ActivityInventoryList))
 
 data Output = Canceled
@@ -26,6 +26,9 @@ type State = { title :: String
              , priority :: Priority
              }
 
+defaultPriority :: Priority
+defaultPriority = Low
+
 addTodoDialog :: forall query m. H.Component query Int Output m
 addTodoDialog =
   H.mkComponent
@@ -34,9 +37,9 @@ addTodoDialog =
     , eval: H.mkEval H.defaultEval { handleAction = handleAction }
     }
   where
-  initialState _ = { title: "sample", priority: Medium }
+  initialState _ = { title: "sample", priority: defaultPriority }
 
-  render state =
+  render _ =
     HH.div
         [ Prop.classes [ClassName "modal", ClassName "is-active"]
         ]
@@ -69,10 +72,9 @@ addTodoDialog =
                 , HH.div [Prop.class_ $ ClassName "control"]
                   [ HH.select
                     [ HE.onValueChange (\s -> PrioritySelected $ unsafePartial $ fromJust $ priorityFromString s)]
-                    [ HH.option [Prop.value "low"] [HH.text "Low"]
-                    , HH.option [Prop.value "medium"] [HH.text "Medium"]
-                    , HH.option [Prop.value "high"] [HH.text "High"]
-                    ]
+                    let mkOption :: forall w i. Priority -> HH.HTML w i
+                        mkOption p = HH.option [Prop.value <<< toLower <<< show $ p ] [HH.text $ show p]
+                    in [mkOption Low, mkOption Medium, mkOption High]
                   ]
                 ]
               ]
