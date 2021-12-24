@@ -2,7 +2,7 @@ module App.ActivityList where
 
 import Prelude
 
-import Data.Array (head, mapMaybe, singleton, span, tail, findIndex, modifyAt, cons)
+import Data.Array (head, span, tail, findIndex, modifyAt, cons)
 import Data.Map (Map, fromFoldable, fromFoldableWith, toUnfoldable, unionWith)
 import Data.Maybe (Maybe(..), fromMaybe, fromJust, maybe, isJust)
 import Data.Tuple (Tuple(..), uncurry)
@@ -13,56 +13,33 @@ import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as Prop
 import Partial.Unsafe (unsafePartial) -- Shame!
+import TaskScheduler.Domain.Task (Task, Priority(..), Tag(..))
+import TaskScheduler.Domain.Panel (Panel(..))
+import Type.Proxy (Proxy(..))
+import App.Component.AddTodoDialog (addTodoDialog)
+import App.Component.AddTodoDialog as AddTodoDialog
 import Web.Event.Event (Event, preventDefault)
 import Web.HTML.Event.DragEvent as DE
-
-data Priority = High
-              | Medium
-              | Low
-
-derive instance eqPriority :: Eq Priority
-
-data Tag = Tag String
-derive instance eqTag :: Eq Tag
-
-data Panel = ActivityInventoryList
-           | TodoToday
-           | Current
-
-instance showPanel :: Show Panel where
-  show ActivityInventoryList = "Activity Inventory List"
-  show TodoToday = "Todo Today"
-  show Current = "Current"
-
-derive instance eqPanel :: Eq Panel
-derive instance ordPanel :: Ord Panel
 
 allPanels :: Array Panel
 allPanels = [ActivityInventoryList, TodoToday, Current]
 
-type Todo =
-  { name :: String
-  , priority :: Priority
-  , tags :: Array Tag
-  , associatedPanel :: Panel
-  }
-
 type TodoNow =
-  { todos :: Maybe (Array Todo)
+  { todos :: Maybe (Array Task)
   } 
 
-initialTodos :: Array Todo
-initialTodos = [ { name : "Finish planning"
+initialTodos :: Array Task
+initialTodos = [ { title : "Finish planning"
                  , priority : High
                  , tags: [Tag "work", Tag "home"]
                  , associatedPanel : ActivityInventoryList
                  }
-               , { name : "next"
+               , { title : "next"
                  , priority : Medium
                  , tags : [Tag "work"]
                  , associatedPanel : TodoToday
                  }
-               , { name : "trivial task"
+               , { title : "trivial task"
                  , priority : Medium
                  , tags : [Tag "home"]
                  , associatedPanel : TodoToday
@@ -70,32 +47,36 @@ initialTodos = [ { name : "Finish planning"
                ]
 
 type State =
-    { todos :: Array Todo
-    , todoNow :: Maybe TodoNow
-    , selectedTodo :: Maybe Todo
-    , transitioning :: Maybe Todo
-    , modalTarget :: Maybe Todo
+    { tasks :: Array Task
+    , taskNow :: Maybe TodoNow
+    , selectedTask :: Maybe Task
+    , transitioning :: Maybe Task
+    , modalTarget :: Maybe Task
     , showTagModal :: Boolean
+    , showAddTodoModal :: Boolean
     , tagText :: String
     }
 
-data Action = Dragging Todo
+data Action = Dragging Task
             | DroppedOn Panel
             | PreventDefault Event Action
-            | OpenAddTagModal Todo
+            | OpenAddTagModal Task
+            | OpenAddTodoModal
             | CloseTagModal
-            | SaveTag Todo Tag
+            | SaveTag Task Tag
             | TagTextAdded String
+            | HandleAddTodo AddTodoDialog.Output
             | Noop
 
 component :: forall q i o m. MonadEffect m => H.Component q i o m
 component =
   H.mkComponent
-    { initialState: \_ -> { todos: initialTodos
-                          , todoNow: Nothing
-                          , selectedTodo: Nothing
+    { initialState: \_ -> { tasks: initialTodos
+                          , taskNow: Nothing
+                          , selectedTask: Nothing
                           , transitioning: Nothing
                           , showTagModal: false
+                          , showAddTodoModal: false
                           , modalTarget: Nothing
                           , tagText: ""
                           }
@@ -103,8 +84,8 @@ component =
     , eval: H.mkEval $ H.defaultEval { handleAction = handleAction }
     }
 
-sidebarView :: forall cs m. State -> HH.HTML cs m
-sidebarView state =
+sidebarView :: forall cs. State -> HH.HTML cs Action
+sidebarView _ =
   HH.aside [ Prop.classes [ClassName "column", ClassName "sidebar", ClassName "is-narrow"]]
     [
       HH.section [ Prop.class_ (ClassName "section")]
@@ -113,15 +94,20 @@ sidebarView state =
           [
             HH.ul [ Prop.class_ (ClassName "menu-list")]
               [
-                HH.li [] [ HH.text "test"]
+                HH.li [] [ HH.button
+                           [ Prop.classes [ClassName "button", ClassName "is-primary"]
+                           , HE.onClick (\_ -> OpenAddTodoModal)
+                           ]
+                           [HH.text "Add New Task"]
+                         ]
               ]
           ]
       ]
     ]
 
 fromArrayOn :: forall k v. Ord k => (v -> k) -> Array v -> Map k (Array v)
---fromArrayOn :: (Todo -> Panel) -> Array Todo -> Map Panel (Array Todo)
-fromArrayOn vk todos = fromFoldableWith append $ map (\v -> Tuple (vk v) [v]) todos
+--fromArrayOn :: (Task -> Panel) -> Array Task -> Map Panel (Array Task)
+fromArrayOn vk tasks = fromFoldableWith append $ map (\v -> Tuple (vk v) [v]) tasks
 
 panelsView :: forall cs. State -> HH.HTML cs Action
 panelsView state =
@@ -129,7 +115,7 @@ panelsView state =
     [
       HH.section [ Prop.class_ (ClassName "section")]
       [
-        HH.div [ Prop.id "Todo"]
+        HH.div [ Prop.id "Task"]
           [
             HH.div [ Prop.class_ (ClassName "container")]
             (uncurry panelsListView <$> toUnfoldable (allPanels' `unionWith append` panelsWithTodos))
@@ -137,36 +123,36 @@ panelsView state =
       ]
     ]
   where allPanels' = fromFoldable (flip Tuple [] <$> allPanels)
-        panelsWithTodos = fromArrayOn _.associatedPanel state.todos
+        panelsWithTodos = fromArrayOn _.associatedPanel state.tasks
 
-panelsListView :: forall cs. Panel -> Array Todo -> HH.HTML cs Action
-panelsListView panel todos =
+panelsListView :: forall cs. Panel -> Array Task -> HH.HTML cs Action
+panelsListView panel tasks =
   HH.div [ Prop.class_ (ClassName "panel"), Prop.id "activityInventoryList"
          , HE.onDragOver (\de -> PreventDefault (DE.toEvent de) Noop)
          , HE.onDrop (\de -> PreventDefault (DE.toEvent de) (DroppedOn panel))
          ]
          [ HH.h1_ [ HH.text (show panel) ]
-         , listView todos
+         , listView tasks
          ]
 
-listView :: forall cs. Array Todo -> HH.HTML cs Action
-listView todos =
-  HH.div [ Prop.class_ (ClassName "itemContainer")] (map todoView todos)
+listView :: forall cs. Array Task -> HH.HTML cs Action
+listView tasks =
+  HH.div [ Prop.class_ (ClassName "itemContainer")] (map todoView tasks)
 
 tagsView :: forall cs. Array Tag -> HH.HTML cs Action
 tagsView tags = HH.ul_ (map (\(Tag tag) -> HH.li_ [HH.text tag]) tags)
 
-todoView :: forall cs. Todo -> HH.HTML cs Action
-todoView todo =
+todoView :: forall cs. Task -> HH.HTML cs Action
+todoView task =
   HH.div
     [ Prop.class_ $ ClassName "item"
-    , Prop.attr (AttrName "style")  $ "background-color: " <> priorityToColor todo.priority
+    , Prop.attr (AttrName "style")  $ "background-color: " <> priorityToColor task.priority
     , Prop.attr (AttrName "draggable") "true"
-    , HE.onDrag (\de -> PreventDefault (DE.toEvent de) (Dragging todo))
-    ] [ HH.text todo.name
-      , tagsView todo.tags
+    , HE.onDrag (\de -> PreventDefault (DE.toEvent de) (Dragging task))
+    ] [ HH.text task.title
+      , tagsView task.tags
       , HH.button [ Prop.classes [ClassName "button", ClassName "is-primary"]
-                  , HE.onClick (\_ -> OpenAddTagModal todo)
+                  , HE.onClick (\_ -> OpenAddTagModal task)
                   ]
                   [ HH.text "Add Tag"]
       ]
@@ -208,9 +194,9 @@ modalCard state content =
                         , HE.onClick (\_ -> CloseTagModal)]
               [HH.text "Cancel"]
             , HH.button [ Prop.classes [ClassName "button", ClassName "is-success"]
-                        , HE.onClick (\_ -> let todo = unsafePartial (fromJust state.modalTarget)
+                        , HE.onClick (\_ -> let task = unsafePartial (fromJust state.modalTarget)
                                                 txt = state.tagText
-                                            in (SaveTag todo (Tag txt)))
+                                            in (SaveTag task (Tag txt)))
                         ]
               [HH.text "Save Tag"]
             ]
@@ -228,54 +214,81 @@ priorityToColor priority =
     Medium -> "#f5f588"
     Low -> "#469dd0"
 
-render :: forall slots m. State -> H.ComponentHTML Action slots m
+type Slots = ( addTodoDialog :: forall query . H.Slot query AddTodoDialog.Output Int )
+
+_addTodoDialog = Proxy :: Proxy "addTodoDialog"
+
+render :: forall m. State -> H.ComponentHTML Action Slots m
 render state =
   HH.div [ Prop.class_ (ClassName "columns")]
     [ sidebarView state
     , panelsView state
     , modalView state
+    , if state.showAddTodoModal
+      then HH.div_ [ HH.slot _addTodoDialog 0 addTodoDialog 0 HandleAddTodo ]
+      else HH.div_ []
     ]
 
-splitTodosByName :: Todo -> Array Todo -> Maybe { init :: Array Todo, todo :: Todo, rest :: Array Todo }
-splitTodosByName todo todos =
-  let { init: init, rest: rest } = span (\t -> t.name == todo.name) todos
-      maybeTodo = head rest
-      rest' = fromMaybe [] (tail rest)
-  in (\t -> {init, todo: t, rest: rest'}) <$> maybeTodo
+-- slot_
+--   :: forall query action input output slots m label slot _1
+--    . Row.Cons label (Slot query output slot) _1 slots
+--   => IsSymbol label
+--   => Ord slot
+--   => Proxy label
+--   -> slot
+--   -> Component query input output m
+--   -> input
+--   -> ComponentHTML action slots m  
 
-handleAction :: forall cs o m. MonadEffect m => Action -> H.HalogenM State Action cs o m Unit
+splitTodosByTitle :: Task -> Array Task -> Maybe { init :: Array Task, task :: Task, rest :: Array Task }
+splitTodosByTitle task tasks =
+  let { init: init, rest: rest } = span (\t -> t.title == task.title) tasks
+      maybeTask = head rest
+      rest' = fromMaybe [] (tail rest)
+  in (\t -> {init, task: t, rest: rest'}) <$> maybeTask
+
+handleAction :: forall o m. MonadEffect m => Action -> H.HalogenM State Action Slots o m Unit
 handleAction = case _ of
-  Dragging todo -> H.modify_ \st -> st { transitioning = Just todo }
+  Dragging task -> H.modify_ \st -> st { transitioning = Just task }
   DroppedOn panel -> H.modify_ \st ->
     let
-      maybeTodos = do
-        todo <- st.transitioning
-        index <- findIndex (\t -> t.name == todo.name) st.todos
-        todos <- modifyAt index (\todo' -> todo' { associatedPanel = panel }) st.todos
-        Just todos
+      maybeTasks = do
+        task <- st.transitioning
+        index <- findIndex (\t -> t.title == task.title) st.tasks
+        tasks <- modifyAt index (\task' -> task' { associatedPanel = panel }) st.tasks
+        Just tasks
 
-      f :: Array Todo -> State
-      f todos' = st { todos = todos' }
-    in maybe st f maybeTodos
+      f :: Array Task -> State
+      f tasks' = st { tasks = tasks' }
+    in maybe st f maybeTasks
 
   PreventDefault e next -> do
     H.liftEffect $ preventDefault e
     handleAction next
 
-  OpenAddTagModal todo -> H.modify_ \st -> st { modalTarget = Just todo }
+  OpenAddTagModal task -> H.modify_ \st -> st { modalTarget = Just task }
+  OpenAddTodoModal -> H.modify_ \st -> st { showAddTodoModal = true }
   CloseTagModal -> H.modify_ \st -> st { modalTarget = Nothing }
-  SaveTag todo tag -> H.modify_ \st -> let
-    maybeTodos = do
-      index <- findIndex (\t -> t.name == todo.name) st.todos
-      modifyAt index (\todo -> todo { tags = cons tag todo.tags }) st.todos
+  SaveTag task tag -> H.modify_ \st -> let
+    maybeTasks = do
+      index <- findIndex (\t -> t.title == task.title) st.tasks
+      modifyAt index (\task' -> task' { tags = cons tag task'.tags }) st.tasks
 
-    f :: Array Todo -> State
-    f todos' = st { todos = todos'
+    f :: Array Task -> State
+    f tasks' = st { tasks = tasks'
                   , modalTarget = Nothing
                   , tagText = ""
                   }
-    in maybe st f maybeTodos
+    in maybe st f maybeTasks
 
   TagTextAdded txt -> H.modify_ \st -> st { tagText = txt }
+
+  HandleAddTodo AddTodoDialog.Canceled ->
+    H.modify_ \st -> st { showAddTodoModal = false }
+
+  HandleAddTodo (AddTodoDialog.TaskCreated task) ->
+    H.modify_ \st -> st { tasks = cons task st.tasks
+                        , showAddTodoModal = false
+                        }
 
   Noop -> pure unit
