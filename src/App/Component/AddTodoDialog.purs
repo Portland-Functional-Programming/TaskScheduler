@@ -28,6 +28,8 @@ type State = { title :: String
              , tags :: Array Tag
              }
 
+type Slot query id = H.Slot query Output id
+
 defaultPriority :: Priority
 defaultPriority = Low
 

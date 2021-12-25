@@ -163,8 +163,8 @@ priorityToColor priority =
     Medium -> "#f5f588"
     Low -> "#469dd0"
 
-type Slots = ( addTodoDialog :: forall query. H.Slot query AddTodoDialog.Output Int
-             , tagModal :: forall query. H.Slot query TagModal.Output Int
+type Slots = ( addTodoDialog :: forall query. AddTodoDialog.Slot query Int
+             , tagModal :: forall query. TagModal.Slot query Int
              )
 
 _addTodoDialog = Proxy :: Proxy "addTodoDialog"
