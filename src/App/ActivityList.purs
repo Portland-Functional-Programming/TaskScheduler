@@ -18,6 +18,7 @@ import TaskScheduler.Domain.Panel (Panel(..))
 import Type.Proxy (Proxy(..))
 import App.Component.AddTodoDialog (addTodoDialog)
 import App.Component.AddTodoDialog as AddTodoDialog
+import App.Component.TagModal as TagModal
 import Web.Event.Event (Event, preventDefault)
 import Web.HTML.Event.DragEvent as DE
 
@@ -52,7 +53,6 @@ type State =
     , selectedTask :: Maybe Task
     , transitioning :: Maybe Task
     , modalTarget :: Maybe Task
-    , showTagModal :: Boolean
     , showAddTodoModal :: Boolean
     , tagText :: String
     }
@@ -63,9 +63,8 @@ data Action = Dragging Task
             | OpenAddTagModal Task
             | OpenAddTodoModal
             | CloseTagModal
-            | SaveTag Task Tag
-            | TagTextAdded String
             | HandleAddTodo AddTodoDialog.Output
+            | HandleTags TagModal.Output
             | Noop
 
 component :: forall q i o m. MonadEffect m => H.Component q i o m
@@ -75,7 +74,6 @@ component =
                           , taskNow: Nothing
                           , selectedTask: Nothing
                           , transitioning: Nothing
-                          , showTagModal: false
                           , showAddTodoModal: false
                           , modalTarget: Nothing
                           , tagText: ""
@@ -157,55 +155,6 @@ todoView task =
                   [ HH.text "Add Tag"]
       ]
 
-tagForm :: forall cs. State -> HH.HTML cs Action
-tagForm state =
-  HH.form_ [ HH.div
-             [Prop.class_ $ ClassName "field"]
-             [ HH.label [Prop.class_ $ ClassName "label"] [HH.text "Name"]
-             , HH.div [Prop.class_ $ ClassName "control"]
-               [ HH.input [ Prop.value state.tagText
-                          , Prop.class_ $ ClassName "input"
-                          , Prop.type_ Prop.InputText
-                          , Prop.placeholder "Enter a tag name"
-                          , HE.onValueInput TagTextAdded]
-               ]
-             ]
-           ]
-
-modalCard :: forall cs. State -> HH.HTML cs Action -> HH.HTML cs Action
-modalCard state content =
-  HH.div
-        [ Prop.classes let classes = if isJust state.modalTarget
-                                     then [ClassName "modal", ClassName "is-active"]
-                                     else [ClassName "modal"]
-                       in classes
-        ]
-        [ HH.div [Prop.class_ $ ClassName "modal-background" ] []
-        , HH.div [Prop.class_ $ ClassName "modal-card"]
-          [ HH.header
-            [Prop.class_ $ ClassName "modal-card-head"]
-            [HH.p [Prop.class_ $ ClassName "modal-card"] [HH.text "Enter a tag"]]
-          , HH.section
-            [Prop.class_ $ ClassName "modal-card-body"]
-            [content]
-          , HH.footer
-            [Prop.class_ $ ClassName "modal-card-foot"]
-            [ HH.button [ Prop.classes [ClassName "button", ClassName "is-failure"]
-                        , HE.onClick (\_ -> CloseTagModal)]
-              [HH.text "Cancel"]
-            , HH.button [ Prop.classes [ClassName "button", ClassName "is-success"]
-                        , HE.onClick (\_ -> let task = unsafePartial (fromJust state.modalTarget)
-                                                txt = state.tagText
-                                            in (SaveTag task (Tag txt)))
-                        ]
-              [HH.text "Save Tag"]
-            ]
-          ]
-        ]
-
-modalView :: forall cs. State -> HH.HTML cs Action
-modalView state = modalCard state (tagForm state)
-
 -- Helper
 priorityToColor :: Priority -> String
 priorityToColor priority =
@@ -214,20 +163,37 @@ priorityToColor priority =
     Medium -> "#f5f588"
     Low -> "#469dd0"
 
-type Slots = ( addTodoDialog :: forall query . H.Slot query AddTodoDialog.Output Int )
+type Slots = ( addTodoDialog :: forall query. H.Slot query AddTodoDialog.Output Int
+             , tagModal :: forall query. H.Slot query TagModal.Output Int
+             )
 
 _addTodoDialog = Proxy :: Proxy "addTodoDialog"
+_tagModal = Proxy :: Proxy "tagModal"
 
 render :: forall m. State -> H.ComponentHTML Action Slots m
 render state =
   HH.div [ Prop.class_ (ClassName "columns")]
     [ sidebarView state
     , panelsView state
-    , modalView state
     , if state.showAddTodoModal
       then HH.div_ [ HH.slot _addTodoDialog 0 addTodoDialog 0 HandleAddTodo ]
       else HH.div_ []
+    , case state.modalTarget of
+        Just task -> HH.div_ [ HH.slot _tagModal 1 TagModal.tagModal task HandleTags ]
+        Nothing -> HH.div_ []
     ]
+
+-- slot
+--   :: forall query action input output slots m label slot _1
+--    . Cons label (Slot query output slot) _1 slots
+--   => IsSymbol label
+--   => Ord slot
+--   => Proxy label
+--   -> slot
+--   -> Component query input output m
+--   -> input
+--   -> (output -> action)
+--   -> ComponentHTML action slots m
 
 -- slot_
 --   :: forall query action input output slots m label slot _1
@@ -269,19 +235,6 @@ handleAction = case _ of
   OpenAddTagModal task -> H.modify_ \st -> st { modalTarget = Just task }
   OpenAddTodoModal -> H.modify_ \st -> st { showAddTodoModal = true }
   CloseTagModal -> H.modify_ \st -> st { modalTarget = Nothing }
-  SaveTag task tag -> H.modify_ \st -> let
-    maybeTasks = do
-      index <- findIndex (\t -> t.title == task.title) st.tasks
-      modifyAt index (\task' -> task' { tags = cons tag task'.tags }) st.tasks
-
-    f :: Array Task -> State
-    f tasks' = st { tasks = tasks'
-                  , modalTarget = Nothing
-                  , tagText = ""
-                  }
-    in maybe st f maybeTasks
-
-  TagTextAdded txt -> H.modify_ \st -> st { tagText = txt }
 
   HandleAddTodo AddTodoDialog.Canceled ->
     H.modify_ \st -> st { showAddTodoModal = false }
@@ -290,5 +243,19 @@ handleAction = case _ of
     H.modify_ \st -> st { tasks = cons task st.tasks
                         , showAddTodoModal = false
                         }
+
+  HandleTags tagsModalOutput -> case tagsModalOutput of
+    TagModal.Canceled -> H.modify_ \st -> st { modalTarget = Nothing }
+    TagModal.TagsAdded task tags -> H.modify_ \st ->
+      -- This is very similar to the DroppedOn case above
+      let maybeTasks = do
+            i <- findIndex (\t -> t.title == task.title) st.tasks
+            modifyAt i (\t -> t { tags = t.tags <> tags}) st.tasks
+
+          f :: Array Task -> State
+          f tasks = st { tasks = tasks
+                       , modalTarget = Nothing
+                       }
+      in maybe st f maybeTasks
 
   Noop -> pure unit
