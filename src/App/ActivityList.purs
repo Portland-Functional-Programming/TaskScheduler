@@ -48,12 +48,9 @@ initialTodos = [ { title : "Finish planning"
 
 type State =
     { tasks :: Array Task
-    , taskNow :: Maybe TodoNow
-    , selectedTask :: Maybe Task
     , transitioning :: Maybe Task
     , modalTarget :: Maybe Task
     , showAddTodoModal :: Boolean
-    , tagText :: String
     }
 
 data Action = Dragging Task
@@ -70,12 +67,9 @@ component :: forall q i o m. MonadEffect m => H.Component q i o m
 component =
   H.mkComponent
     { initialState: \_ -> { tasks: initialTodos
-                          , taskNow: Nothing
-                          , selectedTask: Nothing
                           , transitioning: Nothing
                           , showAddTodoModal: false
                           , modalTarget: Nothing
-                          , tagText: ""
                           }
     , render
     , eval: H.mkEval $ H.defaultEval { handleAction = handleAction }
