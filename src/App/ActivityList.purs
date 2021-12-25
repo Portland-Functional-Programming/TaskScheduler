@@ -23,10 +23,6 @@ import Web.HTML.Event.DragEvent as DE
 allPanels :: Array Panel
 allPanels = [ActivityInventoryList, TodoToday, Current]
 
-type TodoNow =
-  { todos :: Maybe (Array Task)
-  } 
-
 initialTodos :: Array Task
 initialTodos = [ { title : "Finish planning"
                  , priority : High
@@ -102,15 +98,12 @@ fromArrayOn vk tasks = fromFoldableWith append $ map (\v -> Tuple (vk v) [v]) ta
 panelsView :: forall cs. State -> HH.HTML cs Action
 panelsView state =
   HH.div [ Prop.classes [ClassName "column"]]
-    [
-      HH.section [ Prop.class_ (ClassName "section")]
-      [
-        HH.div [ Prop.id "Task"]
-          [
-            HH.div [ Prop.class_ (ClassName "container")]
-            (uncurry panelsListView <$> toUnfoldable (allPanels' `unionWith append` panelsWithTodos))
-          ]
+    [HH.section [ Prop.class_ (ClassName "section")]
+     [HH.div [ Prop.id "Task"]
+      [HH.div [ Prop.class_ (ClassName "container")]
+       (uncurry panelsListView <$> toUnfoldable (allPanels' `unionWith append` panelsWithTodos))
       ]
+     ]
     ]
   where allPanels' = fromFoldable (flip Tuple [] <$> allPanels)
         panelsWithTodos = fromArrayOn _.associatedPanel state.tasks
@@ -127,7 +120,7 @@ panelsListView panel tasks =
 
 listView :: forall cs. Array Task -> HH.HTML cs Action
 listView tasks =
-  HH.div [ Prop.class_ (ClassName "itemContainer")] (map todoView tasks)
+  HH.div [Prop.class_ (ClassName "itemContainer")] (map todoView tasks)
 
 tagsView :: forall cs. Array Tag -> HH.HTML cs Action
 tagsView tags = HH.ul_ (map (\(Tag tag) -> HH.li_ [HH.text tag]) tags)
@@ -139,13 +132,15 @@ todoView task =
     , Prop.attr (AttrName "style")  $ "background-color: " <> priorityToColor task.priority
     , Prop.attr (AttrName "draggable") "true"
     , HE.onDrag (\de -> PreventDefault (DE.toEvent de) (Dragging task))
-    ] [ HH.text task.title
-      , tagsView task.tags
-      , HH.button [ Prop.classes [ClassName "button", ClassName "is-primary"]
-                  , HE.onClick (\_ -> OpenAddTagModal task)
-                  ]
-                  [ HH.text "Add Tag"]
+    ]
+    [ HH.text task.title
+    , tagsView task.tags
+    , HH.button
+      [ Prop.classes [ClassName "button", ClassName "is-primary"]
+      , HE.onClick (\_ -> OpenAddTagModal task)
       ]
+      [ HH.text "Add Tag"]
+    ]
 
 -- Helper
 priorityToColor :: Priority -> String
@@ -164,7 +159,8 @@ _tagModal = Proxy :: Proxy "tagModal"
 
 render :: forall m. State -> H.ComponentHTML Action Slots m
 render state =
-  HH.div [ Prop.class_ (ClassName "columns")]
+  HH.div
+    [ Prop.class_ (ClassName "columns")]
     [ sidebarView state
     , panelsView state
     , if state.showAddTodoModal
