@@ -4,7 +4,7 @@ import Prelude
 
 import Data.Array (head, span, tail, findIndex, modifyAt, cons)
 import Data.Map (Map, fromFoldable, fromFoldableWith, toUnfoldable, unionWith)
-import Data.Maybe (Maybe(..), fromMaybe, fromJust, maybe, isJust)
+import Data.Maybe (Maybe(..), fromMaybe, maybe)
 import Data.Tuple (Tuple(..), uncurry)
 import Effect.Class (class MonadEffect)
 import Halogen (AttrName(..), ClassName(..))
@@ -12,7 +12,6 @@ import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as Prop
-import Partial.Unsafe (unsafePartial) -- Shame!
 import TaskScheduler.Domain.Task (Task, Priority(..), Tag(..))
 import TaskScheduler.Domain.Panel (Panel(..))
 import Type.Proxy (Proxy(..))

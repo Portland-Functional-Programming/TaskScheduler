@@ -4,7 +4,7 @@ module App.Component.TagModal
        , Output(..)
        ) where
 
-import Prelude (($), (<>), (>>>), Unit, map, unit, pure, bind)
+import Prelude (($), (<>), (>>>), Unit, map, bind)
 
 import Data.String (split, trim, Pattern(..))
 import Halogen as H
