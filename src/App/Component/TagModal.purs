@@ -1,5 +1,6 @@
 module App.Component.TagModal
        ( tagModal
+       , Slot
        , Output(..)
        ) where
 
@@ -23,6 +24,8 @@ type State = { task :: Task
 data Action = CancelClicked
             | SaveClicked
             | TagTextAdded String
+
+type Slot query id = H.Slot query Output id
 
 tagModal :: forall query m. H.Component query Task Output m
 tagModal =
