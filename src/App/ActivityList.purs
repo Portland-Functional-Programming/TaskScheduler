@@ -183,29 +183,6 @@ render state =
         Nothing -> HH.div_ []
     ]
 
--- slot
---   :: forall query action input output slots m label slot _1
---    . Cons label (Slot query output slot) _1 slots
---   => IsSymbol label
---   => Ord slot
---   => Proxy label
---   -> slot
---   -> Component query input output m
---   -> input
---   -> (output -> action)
---   -> ComponentHTML action slots m
-
--- slot_
---   :: forall query action input output slots m label slot _1
---    . Row.Cons label (Slot query output slot) _1 slots
---   => IsSymbol label
---   => Ord slot
---   => Proxy label
---   -> slot
---   -> Component query input output m
---   -> input
---   -> ComponentHTML action slots m  
-
 splitTodosByTitle :: Task -> Array Task -> Maybe { init :: Array Task, task :: Task, rest :: Array Task }
 splitTodosByTitle task tasks =
   let { init: init, rest: rest } = span (\t -> t.title == task.title) tasks
