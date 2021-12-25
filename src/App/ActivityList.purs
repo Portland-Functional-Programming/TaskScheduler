@@ -16,7 +16,6 @@ import Partial.Unsafe (unsafePartial) -- Shame!
 import TaskScheduler.Domain.Task (Task, Priority(..), Tag(..))
 import TaskScheduler.Domain.Panel (Panel(..))
 import Type.Proxy (Proxy(..))
-import App.Component.AddTodoDialog (addTodoDialog)
 import App.Component.AddTodoDialog as AddTodoDialog
 import App.Component.TagModal as TagModal
 import Web.Event.Event (Event, preventDefault)
@@ -176,10 +175,10 @@ render state =
     [ sidebarView state
     , panelsView state
     , if state.showAddTodoModal
-      then HH.div_ [ HH.slot _addTodoDialog 0 addTodoDialog 0 HandleAddTodo ]
+      then HH.div_ [ HH.slot _addTodoDialog 0 AddTodoDialog.component 0 HandleAddTodo ]
       else HH.div_ []
     , case state.modalTarget of
-        Just task -> HH.div_ [ HH.slot _tagModal 1 TagModal.tagModal task HandleTags ]
+        Just task -> HH.div_ [ HH.slot _tagModal 1 TagModal.component task HandleTags ]
         Nothing -> HH.div_ []
     ]
 

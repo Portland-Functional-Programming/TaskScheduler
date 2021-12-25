@@ -1,5 +1,5 @@
 module App.Component.TagModal
-       ( tagModal
+       ( component
        , Slot
        , Output(..)
        ) where
@@ -27,8 +27,8 @@ data Action = CancelClicked
 
 type Slot query id = H.Slot query Output id
 
-tagModal :: forall query m. H.Component query Task Output m
-tagModal =
+component :: forall query m. H.Component query Task Output m
+component =
   H.mkComponent
     { initialState
     , render
