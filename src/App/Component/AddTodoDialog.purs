@@ -1,4 +1,8 @@
-module App.Component.AddTodoDialog where
+module App.Component.AddTodoDialog
+       ( component
+       , Slot
+       , Output(..)
+       )where
 
 import Prelude (bind, map, not, pure, show, unit, ($), (<<<), (>>>))
 
@@ -28,11 +32,13 @@ type State = { title :: String
              , tags :: Array Tag
              }
 
+type Slot query id = H.Slot query Output id
+
 defaultPriority :: Priority
 defaultPriority = Low
 
-addTodoDialog :: forall query m. H.Component query Int Output m
-addTodoDialog =
+component :: forall query m. H.Component query Int Output m
+component =
   H.mkComponent
     { initialState
     , render
