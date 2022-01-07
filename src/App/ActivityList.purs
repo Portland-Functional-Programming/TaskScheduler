@@ -35,7 +35,7 @@ initialTodos = [ { title : "Finish planning"
                  , associatedPanel : TodoToday
                  }
                , { title : "trivial task"
-                 , priority : Medium
+                 , priority : Low
                  , tags : [Tag "home"]
                  , associatedPanel : TodoToday
                  }
@@ -128,8 +128,7 @@ tagsView tags = HH.ul_ (map (\(Tag tag) -> HH.li_ [HH.text tag]) tags)
 todoView :: forall cs. Task -> HH.HTML cs Action
 todoView task =
   HH.div
-    [ Prop.class_ $ ClassName "item"
-    , Prop.attr (AttrName "style")  $ "background-color: " <> priorityToColor task.priority
+    [ Prop.classes [ClassName "item", priorityTWClass task.priority]
     , Prop.attr (AttrName "draggable") "true"
     , HE.onDrag (\de -> PreventDefault (DE.toEvent de) (Dragging task))
     ]
@@ -143,12 +142,10 @@ todoView task =
     ]
 
 -- Helper
-priorityToColor :: Priority -> String
-priorityToColor priority =
-  case priority of
-    High -> "#f9aeae"
-    Medium -> "#f5f588"
-    Low -> "#469dd0"
+priorityTWClass :: Priority -> ClassName
+priorityTWClass High = ClassName "bg-red-400"
+priorityTWClass Medium = ClassName "bg-orange-400"
+priorityTWClass Low = ClassName "bg-yellow-400"
 
 type Slots = ( addTodoDialog :: forall query. AddTodoDialog.Slot query Int
              , tagModal :: forall query. TagModal.Slot query Int
