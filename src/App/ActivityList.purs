@@ -100,7 +100,7 @@ fromArrayOn vk tasks = fromFoldableWith append $ map (\v -> Tuple (vk v) [v]) ta
 
 panelsView :: forall cs. State -> HH.HTML cs Action
 panelsView state =
-  HH.div [ Prop.classes [ClassName "column"]]
+  HH.div [ Prop.classes [ClassName "flex"]]
     [HH.section [ Prop.class_ (ClassName "pt-[10px]")]
      [HH.div [ Prop.id "Task"]
       [HH.div [ Prop.classes [ ClassName "flex"
@@ -183,7 +183,7 @@ _tagModal = Proxy :: Proxy "tagModal"
 render :: forall m. State -> H.ComponentHTML Action Slots m
 render state =
   HH.div
-    [ Prop.class_ (ClassName "columns")]
+    [ Prop.class_ (ClassName "flex ")]
     [ sidebarView state
     , panelsView state
     , if state.showAddTodoModal
