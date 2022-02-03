@@ -35,7 +35,7 @@ initialTodos = [ { title : "Finish planning"
                  , associatedPanel : TodoToday
                  }
                , { title : "trivial task"
-                 , priority : Medium
+                 , priority : Low
                  , tags : [Tag "home"]
                  , associatedPanel : TodoToday
                  }
@@ -72,9 +72,12 @@ component =
 
 sidebarView :: forall cs. State -> HH.HTML cs Action
 sidebarView _ =
-  HH.aside [ Prop.classes [ClassName "column", ClassName "sidebar", ClassName "is-narrow"]]
-    [
-      HH.section [ Prop.class_ (ClassName "section")]
+  HH.aside [ Prop.classes [ ClassName "w-1/6"
+                          , ClassName "bg-slate-200"
+                          , ClassName "min-h-full"
+                          ]
+           ]
+    [ HH.section [ Prop.class_ (ClassName "section")]
       [
         HH.nav [ Prop.class_ (ClassName "menu")]
           [
@@ -97,10 +100,15 @@ fromArrayOn vk tasks = fromFoldableWith append $ map (\v -> Tuple (vk v) [v]) ta
 
 panelsView :: forall cs. State -> HH.HTML cs Action
 panelsView state =
-  HH.div [ Prop.classes [ClassName "column"]]
-    [HH.section [ Prop.class_ (ClassName "section")]
+  HH.div [ Prop.classes [ClassName "flex"]]
+    [HH.section [ Prop.class_ (ClassName "pt-[10px]")]
      [HH.div [ Prop.id "Task"]
-      [HH.div [ Prop.class_ (ClassName "container")]
+      [HH.div [ Prop.classes [ ClassName "flex"
+                             , ClassName "w-full"
+                             , ClassName "justify-around"
+                             , ClassName "h-screen"
+                             ]
+              ]
        (uncurry panelsListView <$> toUnfoldable (allPanels' `unionWith append` panelsWithTodos))
       ]
      ]
@@ -110,7 +118,14 @@ panelsView state =
 
 panelsListView :: forall cs. Panel -> Array Task -> HH.HTML cs Action
 panelsListView panel tasks =
-  HH.div [ Prop.class_ (ClassName "panel"), Prop.id "activityInventoryList"
+  HH.div [ Prop.classes [ ClassName "bg-gray-400"
+                        , ClassName "rounded-lg"
+                        , ClassName "w-1/4"
+                        , ClassName "flex"
+                        , ClassName "flex-col"
+                        , ClassName "items-center"
+                        ]
+         , Prop.id "activityInventoryList"
          , HE.onDragOver (\de -> PreventDefault (DE.toEvent de) Noop)
          , HE.onDrop (\de -> PreventDefault (DE.toEvent de) (DroppedOn panel))
          ]
@@ -120,7 +135,13 @@ panelsListView panel tasks =
 
 listView :: forall cs. Array Task -> HH.HTML cs Action
 listView tasks =
-  HH.div [Prop.class_ (ClassName "itemContainer")] (map todoView tasks)
+  HH.div [Prop.classes [ ClassName "flex"
+                       , ClassName "flex-col"
+                       , ClassName "w-5/6"
+                       , ClassName "justify-around"
+                       , ClassName "h-full"
+                       ]
+         ] (map todoView tasks)
 
 tagsView :: forall cs. Array Tag -> HH.HTML cs Action
 tagsView tags = HH.ul_ (map (\(Tag tag) -> HH.li_ [HH.text tag]) tags)
@@ -128,8 +149,12 @@ tagsView tags = HH.ul_ (map (\(Tag tag) -> HH.li_ [HH.text tag]) tags)
 todoView :: forall cs. Task -> HH.HTML cs Action
 todoView task =
   HH.div
-    [ Prop.class_ $ ClassName "item"
-    , Prop.attr (AttrName "style")  $ "background-color: " <> priorityToColor task.priority
+    [ Prop.classes [ ClassName "rounded"
+                   , ClassName "flex"
+                   , ClassName "justify-center"
+                   , ClassName "items-center"
+                   , ClassName "h-[200px]"
+                   , priorityTWClass task.priority]
     , Prop.attr (AttrName "draggable") "true"
     , HE.onDrag (\de -> PreventDefault (DE.toEvent de) (Dragging task))
     ]
@@ -143,12 +168,10 @@ todoView task =
     ]
 
 -- Helper
-priorityToColor :: Priority -> String
-priorityToColor priority =
-  case priority of
-    High -> "#f9aeae"
-    Medium -> "#f5f588"
-    Low -> "#469dd0"
+priorityTWClass :: Priority -> ClassName
+priorityTWClass High = ClassName "bg-red-400"
+priorityTWClass Medium = ClassName "bg-orange-400"
+priorityTWClass Low = ClassName "bg-yellow-400"
 
 type Slots = ( addTodoDialog :: forall query. AddTodoDialog.Slot query Int
              , tagModal :: forall query. TagModal.Slot query Int
@@ -160,7 +183,7 @@ _tagModal = Proxy :: Proxy "tagModal"
 render :: forall m. State -> H.ComponentHTML Action Slots m
 render state =
   HH.div
-    [ Prop.class_ (ClassName "columns")]
+    [ Prop.class_ (ClassName "flex ")]
     [ sidebarView state
     , panelsView state
     , if state.showAddTodoModal
