@@ -121,6 +121,17 @@ let upstream =
 
 let overrides = {=}
 
-let additions = {=}
+let additions =
+{
+  custom-element =
+       { dependencies =
+           [ "aff", "effect", "halogen", "prelude", "psci-support", "web-html"
+           ]
+       , repo =
+           "https://github.com/nonbili/purescript-halogen-custom-element.git"
+       , version =
+           "master"
+       }
+}
 
 in  upstream // overrides // additions

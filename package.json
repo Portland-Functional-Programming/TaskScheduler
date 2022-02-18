@@ -1,14 +1,25 @@
 {
   "private": true,
   "devDependencies": {
+    "@babel/core": "^7.17.5",
+    "@storybook/addon-actions": "^6.4.19",
+    "@storybook/addon-essentials": "^6.4.19",
+    "@storybook/addon-links": "^6.4.19",
+    "@storybook/cli": "^6.4.19",
+    "@storybook/web-components": "^6.4.19",
+    "babel-loader": "^8.2.3",
+    "lit-html": "^2.2.0",
     "parcel": "^2.0.1",
     "purescript": "^0.14.5",
+    "react-dom": "^17.0.2",
     "spago": "^0.20.3"
   },
   "scripts": {
     "build": "spago build",
     "serve": "parcel serve dev/index.html --hmr-port 9009",
-    "build-prod": "mkdir -p prod && cp -r dev/index.html dev/css dev/index.js  prod/ && rm -rf dist && spago bundle-app --to prod/index.js && parcel build prod/index.html"
+    "build-prod": "mkdir -p prod && cp -r dev/index.html dev/css dev/index.js  prod/ && rm -rf dist && spago bundle-app --to prod/index.js && parcel build prod/index.html",
+    "storybook": "start-storybook -p 6006",
+    "build-storybook": "build-storybook"
   },
   "packageManager": "yarn@3.1.1"
 }

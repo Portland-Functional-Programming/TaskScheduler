@@ -37,7 +37,7 @@ type Slot query id = H.Slot query Output id
 defaultPriority :: Priority
 defaultPriority = Low
 
-component :: forall query m. H.Component query Int Output m
+component :: forall query input m. H.Component query input Output m
 component =
   H.mkComponent
     { initialState

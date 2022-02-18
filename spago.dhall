@@ -2,6 +2,7 @@
 , dependencies =
   [ "arrays"
   , "console"
+  , "custom-element"
   , "debug"
   , "effect"
   , "halogen"
